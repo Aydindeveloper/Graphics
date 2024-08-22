@@ -41,78 +41,78 @@ float Blur(float2 centralPos, out float centralDepth, out float centralAO)
     // This manual unrolling is horrible looking, but I found it hard to please the PS4 compiler otherwise. TODO: Make this nicer.
 
     // First set of gathered data.
-    float weight = BilateralWeight(UnpackedDepths.x, linearCentralDepth);
-    total += weight * UnpackedAOs.x;
-    totalWeight += weight;
+    //float weight = BilateralWeight(UnpackedDepths.x, linearCentralDepth);
+    //total += weight * UnpackedAOs.x;
+    //totalWeight += weight;
 
-    weight = BilateralWeight(UnpackedDepths.z, linearCentralDepth);
-    total += weight * UnpackedAOs.z;
-    totalWeight += weight;
+    //weight = BilateralWeight(UnpackedDepths.z, linearCentralDepth);
+    //total += weight * UnpackedAOs.z;
+    //totalWeight += weight;
 
-    weight = BilateralWeight(UnpackedDepths.w, linearCentralDepth);
-    total += weight * UnpackedAOs.w;
-    totalWeight += weight;
+    //weight = BilateralWeight(UnpackedDepths.w, linearCentralDepth);
+    //total += weight * UnpackedAOs.w;
+    //totalWeight += weight;
 
-    // Second set of gathered data.
-    UV = ClampAndScaleUVForBilinear((centralPos + float2(2.0, 0.0)) * _AOBufferSize.zw, _AOBufferSize.zw);
-    GatherAOData(_AOPackedData, UV, UnpackedAOs, UnpackedDepths);
+    //// Second set of gathered data.
+    //UV = ClampAndScaleUVForBilinear((centralPos + float2(2.0, 0.0)) * _AOBufferSize.zw, _AOBufferSize.zw);
+    //GatherAOData(_AOPackedData, UV, UnpackedAOs, UnpackedDepths);
 
-    weight = BilateralWeight(UnpackedDepths.x, linearCentralDepth);
-    total += weight * UnpackedAOs.x;
-    totalWeight += weight;
+    //weight = BilateralWeight(UnpackedDepths.x, linearCentralDepth);
+    //total += weight * UnpackedAOs.x;
+    //totalWeight += weight;
 
-    weight = BilateralWeight(UnpackedDepths.y, linearCentralDepth);
-    total += weight * UnpackedAOs.y;
-    totalWeight += weight;
+    //weight = BilateralWeight(UnpackedDepths.y, linearCentralDepth);
+    //total += weight * UnpackedAOs.y;
+    //totalWeight += weight;
 
-    weight = BilateralWeight(UnpackedDepths.z, linearCentralDepth);
-    total += weight * UnpackedAOs.z;
-    totalWeight += weight;
+    //weight = BilateralWeight(UnpackedDepths.z, linearCentralDepth);
+    //total += weight * UnpackedAOs.z;
+    //totalWeight += weight;
 
-    weight = BilateralWeight(UnpackedDepths.w, linearCentralDepth);
-    total += weight * UnpackedAOs.w;
-    totalWeight += weight;
+    //weight = BilateralWeight(UnpackedDepths.w, linearCentralDepth);
+    //total += weight * UnpackedAOs.w;
+    //totalWeight += weight;
 
 
-    // Third set of gathered data.
-    UV = ClampAndScaleUVForBilinear((centralPos + float2(0.0, 2.0)) * _AOBufferSize.zw, _AOBufferSize.zw);
-    GatherAOData(_AOPackedData, UV, UnpackedAOs, UnpackedDepths);
+    //// Third set of gathered data.
+    //UV = ClampAndScaleUVForBilinear((centralPos + float2(0.0, 2.0)) * _AOBufferSize.zw, _AOBufferSize.zw);
+    //GatherAOData(_AOPackedData, UV, UnpackedAOs, UnpackedDepths);
 
-    weight = BilateralWeight(UnpackedDepths.x, linearCentralDepth);
-    total += weight * UnpackedAOs.x;
-    totalWeight += weight;
+    //weight = BilateralWeight(UnpackedDepths.x, linearCentralDepth);
+    //total += weight * UnpackedAOs.x;
+    //totalWeight += weight;
 
-    weight = BilateralWeight(UnpackedDepths.y, linearCentralDepth);
-    total += weight * UnpackedAOs.y;
-    totalWeight += weight;
+    //weight = BilateralWeight(UnpackedDepths.y, linearCentralDepth);
+    //total += weight * UnpackedAOs.y;
+    //totalWeight += weight;
 
-    weight = BilateralWeight(UnpackedDepths.z, linearCentralDepth);
-    total += weight * UnpackedAOs.z;
-    totalWeight += weight;
+    //weight = BilateralWeight(UnpackedDepths.z, linearCentralDepth);
+    //total += weight * UnpackedAOs.z;
+    //totalWeight += weight;
 
-    weight = BilateralWeight(UnpackedDepths.w, linearCentralDepth);
-    total += weight * UnpackedAOs.w;
-    totalWeight += weight;
+    //weight = BilateralWeight(UnpackedDepths.w, linearCentralDepth);
+    //total += weight * UnpackedAOs.w;
+    //totalWeight += weight;
 
-    // Fourth set of gathered data.
-    UV = ClampAndScaleUVForBilinear((centralPos + float2(2.0, 2.0)) * _AOBufferSize.zw, _AOBufferSize.zw);
-    GatherAOData(_AOPackedData, UV, UnpackedAOs, UnpackedDepths);
+    //// Fourth set of gathered data.
+    //UV = ClampAndScaleUVForBilinear((centralPos + float2(2.0, 2.0)) * _AOBufferSize.zw, _AOBufferSize.zw);
+    //GatherAOData(_AOPackedData, UV, UnpackedAOs, UnpackedDepths);
 
-    weight = BilateralWeight(UnpackedDepths.x, linearCentralDepth);
-    total += weight * UnpackedAOs.x;
-    totalWeight += weight;
+    //weight = BilateralWeight(UnpackedDepths.x, linearCentralDepth);
+    //total += weight * UnpackedAOs.x;
+    //totalWeight += weight;
 
-    weight = BilateralWeight(UnpackedDepths.y, linearCentralDepth);
-    total += weight * UnpackedAOs.y;
-    totalWeight += weight;
+    //weight = BilateralWeight(UnpackedDepths.y, linearCentralDepth);
+    //total += weight * UnpackedAOs.y;
+    //totalWeight += weight;
 
-    weight = BilateralWeight(UnpackedDepths.z, linearCentralDepth);
-    total += weight * UnpackedAOs.z;
-    totalWeight += weight;
+    //weight = BilateralWeight(UnpackedDepths.z, linearCentralDepth);
+    //total += weight * UnpackedAOs.z;
+    //totalWeight += weight;
 
-    weight = BilateralWeight(UnpackedDepths.w, linearCentralDepth);
-    total += weight * UnpackedAOs.w;
-    totalWeight += weight;
+    //weight = BilateralWeight(UnpackedDepths.w, linearCentralDepth);
+    //total += weight * UnpackedAOs.w;
+    //totalWeight += weight;
 
 
     total /= totalWeight;

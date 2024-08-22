@@ -52,7 +52,7 @@ namespace UnityEngine.Rendering.HighDefinition
         AreaLights = 1,
 
         /// <summary>Support for barn doors.</summary>
-        BarnDoor = 0,
+        BarnDoor = 1,
 
         /// <summary>Support to apply a global mip bias on all texture samplers of HDRP.</summary>
         GlobalMipBias = 1,

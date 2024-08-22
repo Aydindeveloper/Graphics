@@ -384,7 +384,7 @@ namespace UnityEngine.Rendering.HighDefinition
         /// Controls the influence of the sun light on the cloud volume. A lower value will suppress the sun light and produce darker clouds overall.
         /// </summary>
         [Tooltip("Controls the influence of the sun light on the cloud volume. A lower value will suppress the sun light and produce darker clouds overall.")]
-        public ClampedFloatParameter sunLightDimmer = new ClampedFloatParameter(1.0f, 0.0f, 1.0f);
+        public ClampedFloatParameter sunLightDimmer = new ClampedFloatParameter(1.0f, 0.0f, 10.0f);
 
         /// <summary>
         /// Controls how much Erosion Factor is taken into account when computing ambient occlusion. The Erosion Factor parameter is editable in the custom preset, Advanced and Manual Modes.

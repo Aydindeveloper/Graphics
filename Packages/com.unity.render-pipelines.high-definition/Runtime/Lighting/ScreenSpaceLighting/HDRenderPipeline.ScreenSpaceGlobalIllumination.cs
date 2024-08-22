@@ -397,6 +397,13 @@ namespace UnityEngine.Rendering.HighDefinition
                 HDTemporalFilter temporalFilter = GetTemporalFilter();
                 HDDiffuseDenoiser diffuseDenoiser = GetDiffuseDenoiser();
 
+                HDDiffuseDenoiser.DiffuseDenoiserParameters ddParams;
+                ddParams.singleChannel = false;
+                ddParams.kernelSize = giSettings.denoiserRadiusSS;
+                ddParams.halfResolutionFilter = giSettings.halfResolutionDenoiserSS;
+                ddParams.jitterFilter = giSettings.secondDenoiserPassSS;
+                ddParams.resolutionMultiplier = resolutionPercentages.x;
+
                 // Run the temporal denoiser
                 TextureHandle historyBufferHF = renderGraph.ImportTexture(RequestIndirectDiffuseHistoryTextureHF(hdCamera));
                 HDTemporalFilter.TemporalFilterParameters filterParams;
@@ -407,16 +414,15 @@ namespace UnityEngine.Rendering.HighDefinition
                 filterParams.exposureControl = true;
                 filterParams.resolutionMultiplier = resolutionPercentages.x;
                 filterParams.historyResolutionMultiplier = resolutionPercentages.y;
-                TextureHandle denoisedRTGI = temporalFilter.Denoise(renderGraph, hdCamera, filterParams, rtGIBuffer, renderGraph.defaultResources.blackTextureXR, historyBufferHF, depthPyramid, normalBuffer, motionVectorBuffer, historyValidationTexture);
+                // OLD TextureHandle denoisedRTGI = temporalFilter.Denoise(renderGraph, hdCamera, filterParams, rtGIBuffer, renderGraph.defaultResources.blackTextureXR, historyBufferHF, depthPyramid, normalBuffer, motionVectorBuffer, historyValidationTexture);
+                TextureHandle denoisedRTGI = diffuseDenoiser.Denoise(renderGraph, hdCamera, ddParams, rtGIBuffer, depthPyramid, normalBuffer, rtGIBuffer);
 
                 // Apply the diffuse denoiser
-                HDDiffuseDenoiser.DiffuseDenoiserParameters ddParams;
-                ddParams.singleChannel = false;
-                ddParams.kernelSize = giSettings.denoiserRadiusSS;
-                ddParams.halfResolutionFilter = giSettings.halfResolutionDenoiserSS;
-                ddParams.jitterFilter = giSettings.secondDenoiserPassSS;
-                ddParams.resolutionMultiplier = resolutionPercentages.x;
-                rtGIBuffer = diffuseDenoiser.Denoise(renderGraph, hdCamera, ddParams, denoisedRTGI, depthPyramid, normalBuffer, rtGIBuffer);
+
+                //rtGIBuffer = diffuseDenoiser.Denoise(renderGraph, hdCamera, ddParams, denoisedRTGI, depthPyramid, normalBuffer, rtGIBuffer);
+
+                rtGIBuffer = temporalFilter.Denoise(renderGraph, hdCamera, filterParams, denoisedRTGI, renderGraph.defaultResources.blackTextureXR, historyBufferHF, depthPyramid, normalBuffer, motionVectorBuffer, historyValidationTexture);
+
 
                 // If the second pass is requested, do it otherwise blit
                 if (giSettings.secondDenoiserPassSS)

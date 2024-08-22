@@ -259,7 +259,7 @@ namespace UnityEngine.Rendering.HighDefinition
                 passData.reblurCB._ReBlurBlurRotator = EvaluateRotator(k_BlurRands[frameIndex]);
                 passData.reblurCB._ReBlurPostBlurRotator = EvaluateRotator(k_PostBlurRands[frameIndex]);
                 passData.reblurCB._HistorySizeAndScale = HDRenderPipeline.EvaluateRayTracingHistorySizeAndScale(hdCamera, mainHistory);
-                passData.reblurCB._ReBlurDenoiserRadius = Mathf.Lerp(0.5f, 1.0f, denoiserRadius);
+                passData.reblurCB._ReBlurDenoiserRadius = Mathf.Lerp(0.0f, 1.0f, denoiserRadius);
                 passData.reblurCB._ReBlurHistoryValidity = historyValidity;
                 float minAntiflicker = 0.0f;
                 float maxAntiflicker = 3.5f;

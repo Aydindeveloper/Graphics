@@ -133,7 +133,7 @@ namespace UnityEngine.Rendering.Universal
             public float mipBias
             {
                 get => m_MipBias;
-                set => m_MipBias = Mathf.Clamp(value, -1.0f, 0.0f);
+                set => m_MipBias = Mathf.Clamp(value, -4.0f, 0.0f);
             }
 
             /// <summary>

@@ -13,5 +13,6 @@ MonoBehaviour:
   m_Name: ComputeMaterialLibrary
   m_EditorClassIdentifier: 
   m_Library:
-    m_Keys: 
-    m_Values: []
+    m_Keys: af712cb0
+    m_Values:
+    - {fileID: -8765468657319955144, guid: e28e8d02189f3d549a2682c06f7ab03d, type: 3}

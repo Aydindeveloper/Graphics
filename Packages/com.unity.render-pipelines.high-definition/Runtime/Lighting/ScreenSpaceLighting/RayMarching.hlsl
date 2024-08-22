@@ -64,6 +64,7 @@ bool RayMarch(float3 positionWS, float3 sampleDir, float3 normalWS, float2 posit
 
         while (!(hit || miss) && (t <= tMax) && (iterCount < _RayMarchingSteps))
         {
+            //rayPos = rayOrigin + (t * 1.1f) * rayDir;
             rayPos = rayOrigin + t * rayDir;
 
             // Ray position often ends up on the edge. To determine (and look up) the right cell,

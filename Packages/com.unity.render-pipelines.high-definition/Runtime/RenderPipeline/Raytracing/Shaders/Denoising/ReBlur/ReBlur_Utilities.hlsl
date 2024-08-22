@@ -6,9 +6,9 @@
 #include "Packages/com.unity.render-pipelines.high-definition/Runtime/RenderPipeline/Raytracing/ReBlurDenoiser.cs.hlsl"
 
 // Accumulation loop is done on 32 frames
-#define MAX_ACCUM_FRAME_NUM 32.0
-#define MIP_LEVEL_COUNT 4.0
-#define MAX_FRAME_NUM_WITH_HISTORY_FIX 4.0
+#define MAX_ACCUM_FRAME_NUM 4.0
+#define MIP_LEVEL_COUNT 0.0
+#define MAX_FRAME_NUM_WITH_HISTORY_FIX 16.0
 
 float2 RotateVector(float4 rotator, float2 v)
 {

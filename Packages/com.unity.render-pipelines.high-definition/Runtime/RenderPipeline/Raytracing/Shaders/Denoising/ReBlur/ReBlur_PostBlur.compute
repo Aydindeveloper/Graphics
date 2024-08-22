@@ -19,7 +19,7 @@
 
 #define REBLUR_BLUR_TILE_SIZE 8
 
-#define POST_BLUR_RADIUS 15.0
+#define POST_BLUR_RADIUS 4.0
 
 // Input buffers
 TEXTURE2D_X(_LightingDistanceTexture);

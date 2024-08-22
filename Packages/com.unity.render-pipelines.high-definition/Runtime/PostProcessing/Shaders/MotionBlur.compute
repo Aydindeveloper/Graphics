@@ -59,7 +59,7 @@ TEXTURE2D_X(_TileMaxNeighbourhood);
 // ---------------------------------------------
 #define INTERLEAVED_GRADIENT_NOISE 0
 #define CHECKERBOARD 1
-#define DITHER_SCHEME INTERLEAVED_GRADIENT_NOISE
+#define DITHER_SCHEME CHECKERBOARD
 
 float RandomValue(uint2 pixCoord, uint frameCount)
 {

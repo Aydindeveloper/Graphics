@@ -35,6 +35,7 @@
 
 // Defines the mip offset for the color buffer
 #define SSGI_MIP_OFFSET 1
+#define SSGI_Reflection_MIP_OFFSET 4
 
 #define SSGI_CLAMP_VALUE 7.0f
 
@@ -189,9 +190,9 @@ void TraceReflectionProbes(PositionInputs posInput, float3 normalWS, float3 rayD
 
                 float2 atlasCoords = GetReflectionAtlasCoordsCube(_CubeScaleOffset[index], R, 0);
 
-                float3 probeResult = SAMPLE_TEXTURE2D_ARRAY_LOD(_ReflectionAtlas, s_trilinear_clamp_sampler, atlasCoords, 0, 0).rgb * envLightData.rangeCompressionFactorCompensation;
+                float3 probeResult = SAMPLE_TEXTURE2D_ARRAY_LOD(_ReflectionAtlas, s_trilinear_clamp_sampler, atlasCoords, 0, SSGI_Reflection_MIP_OFFSET).rgb * envLightData.rangeCompressionFactorCompensation;
                 probeResult = ClampToFloat16Max(probeResult);
-
+                //probeResult = clamp(probeResult, 0, SSGI_CLAMP_VALUE);
                 UpdateLightingHierarchyWeights(totalWeight, weight);
                 result += weight * probeResult * envLightData.multiplier;
             }

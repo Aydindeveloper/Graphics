@@ -45,9 +45,9 @@ float IntegrateArcCosWeighted(float horzion1, float horizon2, float n, float cos
 
 float UpdateHorizon(float maxH, float candidateH, float distSq)
 {
-    float falloff = saturate((1.0 - (distSq * _AOInvRadiusSq)));
+    float falloff = saturate((1.0 - (distSq * (_AOInvRadiusSq * 128))));
 
-    return (candidateH > maxH) ? lerp(maxH, candidateH, falloff) : lerp(maxH, candidateH, 0.03f);        // TODO: Thickness heuristic here.
+    return (candidateH > maxH) ? lerp(maxH, candidateH, falloff) : maxH; // TODO: Thickness heuristic here.
 }
 
 // --------------------------------------------
@@ -60,9 +60,9 @@ float2 GetDirection(uint2 positionSS, int offset)
     float rotations[] = { 60.0, 300.0, 180.0, 240.0, 120.0, 0.0 };
 
 #if TEMPORAL_ROTATION
-    float rotation = (rotations[_AOTemporalRotationIdx] / 360.0);
+    float rotation = (rotations[_AOTemporalRotationIdx] / 360.0) + (rotations[offset] / 360.0);
 #else
-    float rotation = (rotations[offset] / 360.0);
+    float rotation = (rotations[offset] / 360.0) + (rotations[_AOTemporalRotationIdx] / 360.0);
 #endif
 
     noise += rotation;

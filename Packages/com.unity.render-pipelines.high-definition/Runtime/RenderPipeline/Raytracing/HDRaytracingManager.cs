@@ -794,7 +794,7 @@ namespace UnityEngine.Rendering.HighDefinition
             }
         }
 
-        internal static int RayTracingFrameIndex(HDCamera hdCamera, int targetFrameCount = 8)
+        internal static int RayTracingFrameIndex(HDCamera hdCamera, int targetFrameCount = 256)
         {
             return hdCamera.ActiveRayTracingAccumulation() ? (int)hdCamera.GetCameraFrameCount() % targetFrameCount : 0;
         }
