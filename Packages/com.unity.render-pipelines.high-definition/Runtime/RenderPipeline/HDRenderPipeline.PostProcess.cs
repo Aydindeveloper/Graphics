@@ -2392,7 +2392,7 @@ namespace UnityEngine.Rendering.HighDefinition
             parameters.resolution = m_DepthOfField.resolution;
 
             float scale = m_DepthOfField.physicallyBased ? 1f : 1f / (float)parameters.resolution;
-            float resolutionScale = (postProcessViewportSize.y / 1080f) * (scale * 2f);
+            float resolutionScale = 1;
 
             int farSamples = Mathf.CeilToInt(m_DepthOfField.farSampleCount * resolutionScale);
             int nearSamples = Mathf.CeilToInt(m_DepthOfField.nearSampleCount * resolutionScale);
@@ -4051,7 +4051,7 @@ namespace UnityEngine.Rendering.HighDefinition
             data.motionBlurParams1 = new Vector4(
                 m_MotionBlur.intensity.value,
                 m_MotionBlur.maximumVelocity.value / screenMagnitude,
-                0.25f, // min/max velocity ratio for high quality.
+                1.0f, // min/max velocity ratio for high quality.
                 m_MotionBlur.cameraRotationVelocityClamp.value
             );
 
