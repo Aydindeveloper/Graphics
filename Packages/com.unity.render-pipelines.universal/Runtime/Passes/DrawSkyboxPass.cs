@@ -95,7 +95,7 @@ namespace UnityEngine.Rendering.Universal
             else
 #endif
             {
-                skyRendererListHandle = renderGraph.CreateSkyboxRendererList(cameraData.camera);
+                skyRendererListHandle = renderGraph.CreateSkyboxRendererList(cameraData.camera,cameraData.GetProjectionMatrix(0),cameraData.GetViewMatrix(0));
             }
 
             return skyRendererListHandle;
