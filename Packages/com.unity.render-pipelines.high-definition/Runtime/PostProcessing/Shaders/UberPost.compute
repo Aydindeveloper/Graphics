@@ -135,7 +135,7 @@ void Uber(uint3 dispatchThreadId : SV_DispatchThreadID)
     // https://twitter.com/pixelmager/status/717019757766123520
 #ifdef CHROMATIC_ABERRATION
     float2 coords = 2.0 * uv - 1.0;
-    float2 end = uv - coords * dot(coords, coords) * ChromaAmount;
+    float2 end = uv - coords * ChromaAmount;
     float2 diff = end - uv;
     int samples = clamp(int(length(SCREEN_SIZE_OVERRIDE.xy * diff / 2.0)), 3, ChromaMaxSamples);
     float2 delta = diff / samples;
