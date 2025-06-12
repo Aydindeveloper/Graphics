@@ -39,11 +39,11 @@ half4 _SSAOBlueNoiseParams;
 #endif
 
 #if defined(_SAMPLE_COUNT_HIGH)
-    static const int SAMPLE_COUNT = 12;
+    static const int SAMPLE_COUNT = 16;
 #elif defined(_SAMPLE_COUNT_MEDIUM)
-    static const int SAMPLE_COUNT = 8;
+    static const int SAMPLE_COUNT = 10;
 #else
-    static const int SAMPLE_COUNT = 4;
+    static const int SAMPLE_COUNT = 6;
 #endif
 // Hardcoded random UV values that improves performance.
 // The values were taken from this function:
@@ -105,7 +105,7 @@ static half SSAORandomUV[40] =
 // kContrast determines the contrast of occlusion. This allows users to control over/under
 // occlusion. At the moment, this is not exposed to the editor because it's rarely useful.
 // The range is between 0 and 1.
-static const half kContrast = half(0.6);
+static const half kContrast = half(0.2);
 
 // The constant below controls the geometry-awareness of the bilateral
 // filter. The higher value, the more sensitive it is.
