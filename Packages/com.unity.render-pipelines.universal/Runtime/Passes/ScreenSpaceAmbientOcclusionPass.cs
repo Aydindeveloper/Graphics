@@ -255,11 +255,11 @@ namespace UnityEngine.Rendering.Universal
                 );
 
                 // For testing we use a single blue noise texture and a single set of blue noise params.
-                #if UNITY_INCLUDE_TESTS
-                    noiseTexture = m_BlueNoiseTextures[0];
-                    blueNoiseParams.z = 1;
-                    blueNoiseParams.w = 1;
-                #endif
+                //#if UNITY_INCLUDE_TESTS
+                //    noiseTexture = m_BlueNoiseTextures[0];
+                //    blueNoiseParams.z = 1;
+                //    blueNoiseParams.w = 1;
+                //#endif
 
                 m_Material.SetTexture(s_BlueNoiseTextureID, noiseTexture);
                 m_Material.SetVector(s_SSAOBlueNoiseParamsID, blueNoiseParams);
