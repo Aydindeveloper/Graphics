@@ -18,7 +18,12 @@ namespace UnityEngine.Rendering.HighDefinition
         /// <summary>
         /// Half resolution.
         /// </summary>
-        Half = 2
+        Half = 2,
+
+        /// <summary>
+        /// Full resolution.
+        /// </summary>
+        Full = 1
     }
 
     /// <summary>
