@@ -233,7 +233,7 @@ namespace UnityEngine.Rendering.Universal
         /// <summary>
         /// Controls the threshold of horizontal streak effect. A high value makes the effect more localised on the high intensity areas of the screen.
         /// </summary>
-        public ClampedFloatParameter streaksThreshold = new ClampedFloatParameter(0.25f, 0f, 1f);
+        public ClampedFloatParameter streaksThreshold = new ClampedFloatParameter(0.25f, 0f, 10f);
         /// <summary>
         /// Specifies the resolution at which the streak effect is evaluated.
         /// </summary>
