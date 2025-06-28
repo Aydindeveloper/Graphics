@@ -23,7 +23,7 @@ namespace UnityEditor.Rendering.HighDefinition
             public struct ProbeBakingHash : CoreUnsafeUtils.IKeyGetter<HDProbeBakingState, Hash128>
             { public Hash128 Get(ref HDProbeBakingState v) { return v.probeBakingHash; } }
 
-            public EntityId entityId;
+            public int instanceID;
             public Hash128 probeBakingHash;
             public Hash128 probeBakingHashNoBounce;
         }
@@ -33,7 +33,7 @@ namespace UnityEditor.Rendering.HighDefinition
             public struct ProbeBakedHash : CoreUnsafeUtils.IKeyGetter<HDProbeBakedState, Hash128>
             { public Hash128 Get(ref HDProbeBakedState v) { return v.probeBakedHash; } }
 
-            public EntityId entityId;
+            public int instanceID;
             public Hash128 probeBakedHash;
         }
 
@@ -157,8 +157,8 @@ namespace UnityEditor.Rendering.HighDefinition
             // Force to rebake probe with missing baked texture
             for (var i = 0; i < bakedProbeCount; ++i)
             {
-                var entityId = states[i].entityId;
-                var probe = (HDProbe)EditorUtility.EntityIdToObject(entityId);
+                var instanceId = states[i].instanceID;
+                var probe = (HDProbe)EditorUtility.InstanceIDToObject(instanceId);
 
                 if (probe.IsTurnedOff())
                     continue;
@@ -256,8 +256,8 @@ namespace UnityEditor.Rendering.HighDefinition
                         );
 
                         var index = toBakeIndicesList.GetUnchecked(i);
-                        var entityId = states[index].entityId;
-                        var probe = (HDProbe)EditorUtility.EntityIdToObject(entityId);
+                        var instanceId = states[index].instanceID;
+                        var probe = (HDProbe)EditorUtility.InstanceIDToObject(instanceId);
 
                         if(probe.IsTurnedOff())
                             continue;
@@ -289,8 +289,8 @@ namespace UnityEditor.Rendering.HighDefinition
                     for (int i = 0; i < toBakeIndicesList.Count; ++i)
                     {
                         var index = toBakeIndicesList.GetUnchecked(i);
-                        var entityId = states[index].entityId;
-                        var probe = (HDProbe)EditorUtility.EntityIdToObject(entityId);
+                        var instanceId = states[index].instanceID;
+                        var probe = (HDProbe)EditorUtility.InstanceIDToObject(instanceId);
 
                         if (probe.IsTurnedOff())
                             continue;
@@ -322,8 +322,8 @@ namespace UnityEditor.Rendering.HighDefinition
                         for (int i = 0; i < bakedProbeCount; ++i)
                         {
                             var index = toBakeIndicesList.GetUnchecked(i);
-                            var entityId = states[index].entityId;
-                            var probe = (HDProbe)EditorUtility.EntityIdToObject(entityId);
+                            var instanceId = states[index].instanceID;
+                            var probe = (HDProbe)EditorUtility.InstanceIDToObject(instanceId);
                             if (string.IsNullOrEmpty(probe.gameObject.scene.path))
                                 continue;
 
@@ -338,8 +338,8 @@ namespace UnityEditor.Rendering.HighDefinition
                     for (int i = 0; i < toBakeIndicesList.Count; ++i)
                     {
                         var index = toBakeIndicesList.GetUnchecked(i);
-                        var entityId = states[index].entityId;
-                        var probe = (HDProbe)EditorUtility.EntityIdToObject(entityId);
+                        var instanceId = states[index].instanceID;
+                        var probe = (HDProbe)EditorUtility.InstanceIDToObject(instanceId);
                         if (string.IsNullOrEmpty(probe.gameObject.scene.path))
                             continue;
 
@@ -375,7 +375,7 @@ namespace UnityEditor.Rendering.HighDefinition
                     Assert.IsTrue(targetI < targetSize);
                     targetBakedStates[targetI++] = new HDProbeBakedState
                     {
-                        entityId = state.entityId,
+                        instanceID = state.instanceID,
                         probeBakedHash = state.probeBakingHash
                     };
                 }
@@ -817,7 +817,7 @@ namespace UnityEditor.Rendering.HighDefinition
             var i = 0;
             foreach (var probe in probes)
             {
-                states[i].entityId = probe.GetInstanceID();
+                states[i].instanceID = probe.GetInstanceID();
                 ++i;
             }
         }

@@ -1,7 +1,6 @@
 using System;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using Unity.Collections.LowLevel.Unsafe;
 using UnityEngine;
 using UnityEngine.VFX;
 using UnityObject = UnityEngine.Object;
@@ -273,9 +272,8 @@ namespace UnityEditor.VFX
         {
             if (typeof(T) == typeof(int))
                 return (T)(object)base.Get();
-            Debug.Assert(UnsafeUtility.SizeOf<EntityId>() == sizeof(int), "EntityId size is not equal to int size, this will cause issues, update to VFXValue<EntityId> instead");
 
-            return (T)(object)EditorUtility.EntityIdToObject(base.Get());
+            return (T)(object)EditorUtility.InstanceIDToObject(base.Get());
         }
 
         public override object GetContent()

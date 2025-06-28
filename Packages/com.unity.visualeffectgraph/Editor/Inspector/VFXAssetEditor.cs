@@ -92,9 +92,9 @@ class VisualEffectAssetEditor : UnityEditor.Editor
 {
 #if UNITY_2021_1_OR_NEWER
     [OnOpenAsset(OnOpenAssetAttributeMode.Validate)]
-    public static bool WillOpenInUnity(EntityId entityId)
+    public static bool WillOpenInUnity(int instanceID)
     {
-        var obj = EditorUtility.EntityIdToObject(entityId);
+        var obj = EditorUtility.InstanceIDToObject(instanceID);
         if (obj is VFXGraph || obj is VFXModel || obj is VFXUI)
             return true;
         else if (obj is VisualEffectAsset)
@@ -106,14 +106,14 @@ class VisualEffectAssetEditor : UnityEditor.Editor
 
 #endif
     [OnOpenAsset(1)]
-    public static bool OnOpenVFX(EntityId entityId, int line)
+    public static bool OnOpenVFX(int instanceID, int line)
     {
-        var obj = EditorUtility.EntityIdToObject(entityId);
+        var obj = EditorUtility.InstanceIDToObject(instanceID);
         if (obj is VFXGraph || obj is VFXModel || obj is VFXUI)
         {
             // for visual effect graph editor ScriptableObject select them when double clicking on them.
             //Since .vfx importer is a copyasset, the default is to open it with an external editor.
-            Selection.activeEntityId = entityId;
+            Selection.activeEntityId = instanceID;
             return true;
         }
         else if (obj is VisualEffectAsset vfxAsset)
@@ -142,7 +142,7 @@ class VisualEffectAssetEditor : UnityEditor.Editor
         }
         else if (obj is Material || obj is Shader || obj is ComputeShader)
         {
-            var path = AssetDatabase.GetAssetPath(entityId);
+            var path = AssetDatabase.GetAssetPath(instanceID);
             if (path.EndsWith(VisualEffectResource.Extension))
             {
                 var resource = VisualEffectResource.GetResourceAtPath(path);

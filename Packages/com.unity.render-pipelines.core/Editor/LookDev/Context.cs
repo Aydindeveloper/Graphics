@@ -2,7 +2,6 @@ using System;
 using UnityEngine;
 using System.Collections.Generic;
 using System.Collections;
-using UnityEngine.Serialization;
 
 namespace UnityEditor.Rendering.LookDev
 {
@@ -335,9 +334,8 @@ namespace UnityEditor.Rendering.LookDev
         // Careful here: we want to keep it while reloading script.
         // But from one unity editor to an other, ID are not kept.
         // So, only use it when reloading from script update.
-        [FormerlySerializedAs("viewedObjecHierarchytInstanceID")]
         [SerializeField]
-        EntityId viewedObjecHierarchytEntityId;
+        int viewedObjecHierarchytInstanceID;
 
         /// <summary>
         /// Check if an Environment is registered for this view.
@@ -345,7 +343,7 @@ namespace UnityEditor.Rendering.LookDev
         /// </summary>
         public bool hasViewedObject =>
             !String.IsNullOrEmpty(viewedObjectAssetGUID)
-            || viewedObjecHierarchytEntityId != 0;
+            || viewedObjecHierarchytInstanceID != 0;
 
         /// <summary>Reference to the object given for instantiation.</summary>
         public GameObject viewedObjectReference { get; private set; }
@@ -428,14 +426,14 @@ namespace UnityEditor.Rendering.LookDev
         public void UpdateViewedObject(GameObject viewedObject)
         {
             viewedObjectAssetGUID = "";
-            viewedObjecHierarchytEntityId = 0;
+            viewedObjecHierarchytInstanceID = 0;
             viewedObjectReference = null;
             if (viewedObject == null || viewedObject.Equals(null))
                 return;
 
             bool fromHierarchy = viewedObject.scene.IsValid();
             if (fromHierarchy)
-                viewedObjecHierarchytEntityId = viewedObject.GetInstanceID();
+                viewedObjecHierarchytInstanceID = viewedObject.GetInstanceID();
             else
                 viewedObjectAssetGUID = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(viewedObject));
             viewedObjectReference = viewedObject;
@@ -453,9 +451,9 @@ namespace UnityEditor.Rendering.LookDev
                 string path = AssetDatabase.GUIDToAssetPath(viewedObjectAssetGUID);
                 viewedObjectReference = AssetDatabase.LoadAssetAtPath<GameObject>(path);
             }
-            else if (viewedObjecHierarchytEntityId != 0)
+            else if (viewedObjecHierarchytInstanceID != 0)
             {
-                viewedObjectReference = EditorUtility.EntityIdToObject(viewedObjecHierarchytEntityId) as GameObject;
+                viewedObjectReference = EditorUtility.InstanceIDToObject(viewedObjecHierarchytInstanceID) as GameObject;
             }
         }
 
@@ -468,7 +466,7 @@ namespace UnityEditor.Rendering.LookDev
         }
 
         internal void CleanTemporaryObjectIndexes()
-            => viewedObjecHierarchytEntityId = 0;
+            => viewedObjecHierarchytInstanceID = 0;
 
         /// <summary>Reset the camera state to default values</summary>
         public void ResetCameraState()
