@@ -154,7 +154,7 @@ void ApplyDecal(float4 positionCS,
     metallic = metallic * decalSurfaceData.MAOSAlpha + decalSurfaceData.metallic;
 #endif
 
-    occlusion = occlusion * decalSurfaceData.MAOSAlpha + decalSurfaceData.occlusion;
+    occlusion = occlusion * decalSurfaceData.baseColor.w + decalSurfaceData.occlusion;
 
     smoothness = smoothness * decalSurfaceData.MAOSAlpha + decalSurfaceData.smoothness;
 #endif
