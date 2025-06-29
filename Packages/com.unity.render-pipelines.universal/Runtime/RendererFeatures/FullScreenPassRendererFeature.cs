@@ -16,6 +16,10 @@ namespace UnityEngine.Rendering.Universal
         public enum InjectionPoint
         {
             /// <summary>
+            /// Inject a full screen pass After Opaques are rendered.
+            /// </summary>
+            AfterRenderingOpaques = RenderPassEvent.AfterRenderingOpaques,
+            /// <summary>
             /// Inject a full screen pass before transparents are rendered.
             /// </summary>
             BeforeRenderingTransparents = RenderPassEvent.BeforeRenderingTransparents,
