@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Assertions;
 using UnityEngine.Rendering.HighDefinition;
+using UnityEditor.Rendering;
 using UnityEngine.Rendering;
 
 namespace UnityEditor.Rendering.HighDefinition
@@ -99,5 +101,9 @@ namespace UnityEditor.Rendering.HighDefinition
         };
 
         Type HDProbeUI.IProbeUISettingsProvider.customTextureType => typeof(Cubemap);
+
+        HDProbeUI.ToolBar[] HDProbeUI.IProbeUISettingsProvider.toolbars => new HDProbeUI.ToolBar[] { };
+
+        Dictionary<KeyCode, HDProbeUI.ToolBar> HDProbeUI.IProbeUISettingsProvider.shortcuts => new();
     }
 }

@@ -368,5 +368,9 @@ namespace UnityEditor.Rendering.HighDefinition
         };
 
         Type HDProbeUI.IProbeUISettingsProvider.customTextureType => typeof(Texture2D);
+
+        HDProbeUI.ToolBar[] HDProbeUI.IProbeUISettingsProvider.toolbars => new HDProbeUI.ToolBar[] { };
+
+        Dictionary<KeyCode, HDProbeUI.ToolBar> HDProbeUI.IProbeUISettingsProvider.shortcuts => new() { };
     }
 }
