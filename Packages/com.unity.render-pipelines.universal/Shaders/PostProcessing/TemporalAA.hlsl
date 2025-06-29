@@ -360,7 +360,14 @@
         // Discard (some) history when outside of history buffer (e.g. camera jump)
         half frameInfluence = ((historyQuality >= 1) && any(abs(uv - 0.5 + velocity) > 0.5)) ? 1 : _TaaFrameInfluence;
 
-        half4 workingColor = ApplyHistoryColorLerp(clampedAccumulation, colorCenter, frameInfluence);
+        // Simple Step Speed Rejection
+        //half SpeedRejection = step(length(velocity), 0.035f);
+
+        //Smooth Speed Reject;
+        //half SpeedRejection = 1-smoothstep(0, 0.035f,length(velocity));
+        half SpeedRejection = 1 - clamp((length(velocity) - 0.02f) * 100, 0.0f, 1.0f);
+    
+        half4 workingColor = ApplyHistoryColorLerp(clampedAccumulation, colorCenter, frameInfluence + (1 - SpeedRejection));
 
         half4 dstSceneColor = WorkingSpaceToScene(workingColor);
 
