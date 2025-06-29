@@ -129,9 +129,13 @@ namespace UnityEngine.Rendering
 
 #if USE_INPUT_SYSTEM
             var lookDelta = lookAction.ReadValue<Vector2>();
-            inputRotateAxisX = lookDelta.x * m_LookSpeedMouse * k_MouseSensitivityMultiplier;
+#if UNITY_EDITOR
+            inputRotateAxisX = lookDelta.x * m_LookSpeedMouse * k_MouseSensitivityMultiplier ;
             inputRotateAxisY = lookDelta.y * m_LookSpeedMouse * k_MouseSensitivityMultiplier;
-
+#else
+            inputRotateAxisX = lookDelta.x * m_LookSpeedMouse * k_MouseSensitivityMultiplier * Time.deltaTime * 100;
+            inputRotateAxisY = lookDelta.y * m_LookSpeedMouse * k_MouseSensitivityMultiplier * Time.deltaTime * 100;
+#endif
             leftShift = Keyboard.current?.leftShiftKey?.isPressed ?? false;
             fire1 = Mouse.current?.leftButton?.isPressed == true || Gamepad.current?.xButton?.isPressed == true;
 
