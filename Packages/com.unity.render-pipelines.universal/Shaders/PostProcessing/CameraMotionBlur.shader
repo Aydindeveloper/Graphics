@@ -106,7 +106,7 @@ Shader "Hidden/Universal Render Pipeline/CameraMotionBlur"
             half2 velocity;
             if(useMotionVectors == 1)
             {
-                velocity = GetVelocity(uv) * _Intensity;
+                velocity = ClampVelocity(GetVelocity(uv),_Clamp) * _Intensity;
                 // Scale back to -1, 1 from 0..1 to match GetCameraVelocity. A workaround to keep existing visual look.
                 // TODO: There's bug in GetCameraVelocity, which is using NDC and not UV
                 velocity *= 2;
