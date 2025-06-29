@@ -11,7 +11,7 @@ namespace UnityEditor.VFX.UI
     {
         protected readonly VFXView m_VFXView;
 
-        internal class NotifyEditorWindow : EditorWindow
+        private class NotifyEditorWindow : EditorWindow
         {
             public event Action Destroyed;
 

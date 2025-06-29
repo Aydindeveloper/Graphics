@@ -125,7 +125,6 @@ namespace UnityEditor.VFX.UI
         protected void Modified()
         {
             m_UI.Modified(true);
-            EditorUtility.SetDirty(m_ViewController.graph);
             m_ViewController.IncremenentGraphUndoRedoState(null, VFXModel.InvalidationCause.kUIChanged);
         }
 

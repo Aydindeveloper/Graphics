@@ -1923,27 +1923,21 @@ namespace UnityEditor.VFX.UI
             return ui.groupInfos.Last();
         }
 
-        public void GroupNodes(VFXNodeController[] nodes) => GroupNodes(nodes, Array.Empty<VFXStickyNoteController>());
-
-        public void GroupNodes(VFXNodeController[] nodes, VFXStickyNoteController[] stickyNoteControllers)
+        public void GroupNodes(VFXNodeController[] nodes)
         {
             // If a node from the selection already belongs to a group, remove it from this group
             foreach (var g in groupNodes.ToArray())
             {
                 g.RemoveNodes(nodes);
-                g.RemoveStickyNotes(stickyNoteControllers);
-                if (g.nodes.Count() == 0)
+                if (g.nodes.Count() ==0)
                 {
                     RemoveGroupNode(g);
                 }
-
             }
 
             var info = PrivateAddGroupNode(Vector2.zero);
 
-            info.contents = nodes.Select(t => new VFXNodeID(t.model, t.id))
-                .Concat(stickyNoteControllers.Select(x => new VFXNodeID(x.index)))
-                .ToArray();
+            info.contents = nodes.Select(t => new VFXNodeID(t.model, t.id)).ToArray();
 
             m_Graph.Invalidate(VFXModel.InvalidationCause.kUIChanged);
         }
