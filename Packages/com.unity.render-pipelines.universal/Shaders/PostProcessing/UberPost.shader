@@ -162,7 +162,7 @@ Shader "Hidden/Universal Render Pipeline/UberPost"
                 // Very fast version of chromatic aberration from HDRP using 3 samples and hardcoded
                 // spectral lut. Performs significantly better on lower end GPUs.
                 float2 coords = 2.0 * uv - 1.0;
-                float2 end = uv - coords * dot(coords, coords) * ChromaAmount;
+                float2 end = uv - coords /* * dot(coords, coords) disable Distortion*/ * ChromaAmount;
                 float2 delta = (end - uv) / 3.0;
 
                 half r = color.r;
