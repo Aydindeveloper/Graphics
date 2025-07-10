@@ -155,21 +155,37 @@ Shader "Hidden/Universal Render Pipeline/UberPost"
             // NOTE: Hlsl specifies missing input.a to fill 1 (0 for .rgb).
             // InputColor is a "bottom" layer for alpha output.
             half4 inputColor = SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_LinearClamp, ClampUVForBilinear(SCREEN_COORD_REMOVE_SCALEBIAS(uvDistorted), _BlitTexture_TexelSize.xy));
+            //half3 color = inputColor.rgb;
             half3 color = inputColor.rgb;
+
 
             #if _CHROMATIC_ABERRATION
             {
                 // Very fast version of chromatic aberration from HDRP using 3 samples and hardcoded
                 // spectral lut. Performs significantly better on lower end GPUs.
                 float2 coords = 2.0 * uv - 1.0;
-                float2 end = uv - coords /* * dot(coords, coords) disable Distortion*/ * ChromaAmount;
+                float2 end = uv - coords /*dot(coords, coords)*/ * ChromaAmount;
                 float2 delta = (end - uv) / 3.0;
-
+                
                 half r = color.r;
                 half g = SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_LinearClamp, ClampUVForBilinear(SCREEN_COORD_REMOVE_SCALEBIAS(DistortUV(delta + uv)      ), _BlitTexture_TexelSize.xy)).y;
                 half b = SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_LinearClamp, ClampUVForBilinear(SCREEN_COORD_REMOVE_SCALEBIAS(DistortUV(delta * 2.0 + uv)), _BlitTexture_TexelSize.xy)).z;
 
                 color = half3(r, g, b);
+                
+
+
+                // for(int i = 1;  i < 8; i++)
+                // {
+
+                // float4 K = float4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+                // float3 P = abs(frac((i / 10.0f) + K.xyz) * 6.0 - K.www);
+                // float3 ChromaColor = 1 * lerp(K.xxx, saturate(P - K.xxx), 1);
+
+                //   color += SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_LinearClamp, ClampUVForBilinear(SCREEN_COORD_REMOVE_SCALEBIAS(DistortUV((delta * i) + uv)), _BlitTexture_TexelSize.xy)).rgb * ChromaColor;
+                // }
+
+                // color /= 7;
             }
             #endif
 
