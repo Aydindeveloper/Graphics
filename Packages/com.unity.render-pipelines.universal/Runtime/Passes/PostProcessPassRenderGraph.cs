@@ -1553,6 +1553,8 @@ namespace UnityEngine.Rendering.Universal
             internal XRPass xr;
             internal float intensity;
             internal float clamp;
+            internal float separation;
+
             internal bool enableAlphaOutput;
         }
 
@@ -1578,7 +1580,9 @@ namespace UnityEngine.Rendering.Universal
             TextureHandle motionVectorColor = resourceData.motionVectorColor;
             TextureHandle cameraDepthTexture = resourceData.cameraDepthTexture;
 
-            var VelocitySetupDesc = GetCompatibleDescriptor(srcDesc, tw, th, GraphicsFormat.R16G16B16A16_SFloat);
+            //var VelocitySetupDesc = GetCompatibleDescriptor(srcDesc, tw, th, GraphicsFormat.A2B10G10R10_UNormPack32);
+            var VelocitySetupDesc = GetCompatibleDescriptor(srcDesc, tw, th, GraphicsFormat.R16G16B16A16_UNorm);
+
             var VelocitySetup = CreateCompatibleTexture(renderGraph, VelocitySetupDesc, "_VelocityTest", true, FilterMode.Bilinear);
             var Tile2RTDesc = GetCompatibleDescriptor(srcDesc, tw / 2, th / 2, GraphicsFormat.R16G16_SFloat);
             var Tile2RT = CreateCompatibleTexture(renderGraph, Tile2RTDesc, "_Tile2RT", true, FilterMode.Bilinear);
@@ -1640,6 +1644,7 @@ namespace UnityEngine.Rendering.Universal
                 passData.enableAlphaOutput = cameraData.isAlphaOutputEnabled;
                 passData.intensity = m_MotionBlur.intensity.value;
                 passData.clamp = m_MotionBlur.clamp.value;
+
                 builder.SetRenderFunc(static (MotionBlurPassData data, RasterGraphContext context) =>
                 {
                     var cmd = context.cmd;
@@ -2043,6 +2048,7 @@ namespace UnityEngine.Rendering.Universal
                 passData.enableAlphaOutput = cameraData.isAlphaOutputEnabled;
                 passData.intensity = m_MotionBlur.intensity.value;
                 passData.clamp = m_MotionBlur.clamp.value;
+                passData.separation = m_MotionBlur.separation.value;
                 builder.SetRenderFunc(static (MotionBlurPassData data, RasterGraphContext context) =>
                 {
                     var cmd = context.cmd;
@@ -2055,7 +2061,9 @@ namespace UnityEngine.Rendering.Universal
                     data.material.SetFloat("_RcpMaxBlurRadius", data.clamp);
                     data.material.SetTexture("_VelocityTex", data.VelocitySetup);
                     data.material.SetTexture("_NeighborMaxTex", data.NeighborMaxTex);
-                    data.material.SetFloat("_LoopCount", 16);
+                    data.material.SetFloat("_LoopCount", 64);
+                    data.material.SetFloat("_Separation", data.separation);
+
 
 
 

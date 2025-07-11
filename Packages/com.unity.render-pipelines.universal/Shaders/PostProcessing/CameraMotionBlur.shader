@@ -26,30 +26,31 @@ Shader "Hidden/Universal Render Pipeline/CameraMotionBlur"
 
         // TileMax filter parameters
         int _TileMaxLoop;
-        float2 _TileMaxOffs;
+        half2 _TileMaxOffs;
 
         // Maximum blur radius (in pixels)
         half _MaxBlurRadius;
-        float _RcpMaxBlurRadius;
+        half _RcpMaxBlurRadius;
 
         // Filter parameters/coefficients
         half _LoopCount;
+        half _Separation;
 
         TEXTURE2D_X(_MainTex);
         TEXTURE2D_X(_MotionVectorTexture);
         TEXTURE2D_X(_VelocityTex);
-        float4 _MotionVectorTexture_TexelSize;
+        half4 _MotionVectorTexture_TexelSize;
 
         TEXTURE2D_X(_NeighborMaxTex);
         TEXTURE2D_X(_Tile2RT);
         TEXTURE2D_X(_Tile4RT);
         TEXTURE2D_X(_Tile8RT);
         TEXTURE2D_X(_TileVRT);
-        float4 _Tile2RT_TexelSize;
-        float4 _Tile4RT_TexelSize;
-        float4 _Tile8RT_TexelSize;
-        float4 _TileVRT_TexelSize;
-        float4 _NeighborMaxTex_TexelSize;
+        half4 _Tile2RT_TexelSize;
+        half4 _Tile4RT_TexelSize;
+        half4 _Tile8RT_TexelSize;
+        half4 _TileVRT_TexelSize;
+        half4 _NeighborMaxTex_TexelSize;
 
 
 
@@ -60,8 +61,8 @@ Shader "Hidden/Universal Render Pipeline/CameraMotionBlur"
 
         struct VaryingsCMB
         {
-            float4 positionCS    : SV_POSITION;
-            float4 texcoord      : TEXCOORD0;
+            half4 positionCS    : SV_POSITION;
+            half4 texcoord      : TEXCOORD0;
             UNITY_VERTEX_OUTPUT_STEREO
         };
 
@@ -71,13 +72,13 @@ Shader "Hidden/Universal Render Pipeline/CameraMotionBlur"
             UNITY_SETUP_INSTANCE_ID(input);
             UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
 
-            float4 pos = GetFullScreenTriangleVertexPosition(input.vertexID);
-            float2 uv  = GetFullScreenTriangleTexCoord(input.vertexID);
+            half4 pos = GetFullScreenTriangleVertexPosition(input.vertexID);
+            half2 uv  = GetFullScreenTriangleTexCoord(input.vertexID);
 
             output.positionCS  = pos;
             output.texcoord.xy = DYNAMIC_SCALING_APPLY_SCALEBIAS(uv);
 
-            float4 projPos = output.positionCS * 0.5;
+            half4 projPos = output.positionCS * 0.5;
             projPos.xy = projPos.xy + projPos.w;
             output.texcoord.zw = projPos.xy;
 
@@ -90,7 +91,7 @@ Shader "Hidden/Universal Render Pipeline/CameraMotionBlur"
             return (len > 0.0) ? min(len, maxVelocity) * (velocity * rcp(len)) : 0.0;
         }
 
-        half2 GetVelocity(float2 uv)
+        half2 GetVelocity(half2 uv)
         {
             // Unity motion vectors are forward motion vectors in screen UV space
             half2 offsetUv = SAMPLE_TEXTURE2D_X(_MotionVectorTexture, sampler_LinearClamp, uv).xy;
@@ -98,7 +99,7 @@ Shader "Hidden/Universal Render Pipeline/CameraMotionBlur"
         }
 
         // Per-pixel camera velocity
-        half2 GetCameraVelocity(float4 uv)
+        half2 GetCameraVelocity(half4 uv)
         {
             #if UNITY_REVERSED_Z
                 half depth = SampleSceneDepth(uv.xy).x;
@@ -106,10 +107,10 @@ Shader "Hidden/Universal Render Pipeline/CameraMotionBlur"
                 half depth = lerp(UNITY_NEAR_CLIP_VALUE, 1, SampleSceneDepth(uv.xy).x);
             #endif
 
-            float4 worldPos = float4(ComputeWorldSpacePosition(uv.xy, depth, UNITY_MATRIX_I_VP), 1.0);
+            half4 worldPos = half4(ComputeWorldSpacePosition(uv.xy, depth, UNITY_MATRIX_I_VP), 1.0);
 
-            float4 prevClipPos = mul(_PrevViewProjM, worldPos);
-            float4 curClipPos = mul(_ViewProjM, worldPos);
+            half4 prevClipPos = mul(_PrevViewProjM, worldPos);
+            half4 curClipPos = mul(_ViewProjM, worldPos);
 
             half2 prevPosCS = prevClipPos.xy / prevClipPos.w;
             half2 curPosCS = curClipPos.xy / curClipPos.w;
@@ -122,10 +123,10 @@ Shader "Hidden/Universal Render Pipeline/CameraMotionBlur"
             return ClampVelocity(velocity, _Clamp);
         }
 
-        half4 GatherSample(half sampleNumber, half2 velocity, half invSampleCount, float2 centerUV, half randomVal, half velocitySign)
+        half4 GatherSample(half sampleNumber, half2 velocity, half invSampleCount, half2 centerUV, half randomVal, half velocitySign)
         {
             half  offsetLength = (sampleNumber + 0.5h) + (velocitySign * (randomVal - 0.5h));
-            float2 sampleUV = centerUV + (offsetLength * invSampleCount) * velocity * velocitySign;
+            half2 sampleUV = centerUV + (offsetLength * invSampleCount) * velocity * velocitySign;
 
 
             #if UNITY_REVERSED_Z
@@ -138,7 +139,7 @@ Shader "Hidden/Universal Render Pipeline/CameraMotionBlur"
 
             #endif
 
-            float diff = VelocityDepth < Depth ? 1:0;
+            half diff = VelocityDepth < Depth ? 1:0;
 
             return SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_PointClamp, sampleUV); //* diff;
         }
@@ -147,7 +148,7 @@ Shader "Hidden/Universal Render Pipeline/CameraMotionBlur"
         {
             UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
 
-            float2 uv = UnityStereoTransformScreenSpaceTex(input.texcoord.xy);
+            half2 uv = UnityStereoTransformScreenSpaceTex(input.texcoord.xy);
 
             half2 velocity;
             if(useMotionVectors == 1)
@@ -158,7 +159,7 @@ Shader "Hidden/Universal Render Pipeline/CameraMotionBlur"
                 velocity *= 2;
             }
             else
-                velocity = GetCameraVelocity(float4(uv, input.texcoord.zw)) * _Intensity;
+                velocity = GetCameraVelocity(half4(uv, input.texcoord.zw)) * _Intensity;
 
             half randomVal = InterleavedGradientNoise(uv * _SourceSize.xy, 0);
             half invSampleCount = rcp(iterations * 2.0);
@@ -185,7 +186,7 @@ Shader "Hidden/Universal Render Pipeline/CameraMotionBlur"
         half4 FragVelocitySetup(VaryingsCMB input)
         {
             UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
-            float2 uv = UnityStereoTransformScreenSpaceTex(input.texcoord.xy);
+            half2 uv = UnityStereoTransformScreenSpaceTex(input.texcoord.xy);
 
             #if UNITY_REVERSED_Z
                 half d = SampleSceneDepth(uv.xy).x;
@@ -193,7 +194,7 @@ Shader "Hidden/Universal Render Pipeline/CameraMotionBlur"
                 half d = lerp(UNITY_NEAR_CLIP_VALUE, 1, SampleSceneDepth(uv.xy).x);
             #endif
 
-            float2 v = SAMPLE_TEXTURE2D_X(_MotionVectorTexture, sampler_LinearClamp, uv).xy;
+            half2 v = SAMPLE_TEXTURE2D_X(_MotionVectorTexture, sampler_LinearClamp, uv).xy;
 
             // Apply the exposure time and convert to the pixel space.
             v *= (_Intensity * 0.5) * _MotionVectorTexture_TexelSize.zw;
@@ -218,9 +219,9 @@ Shader "Hidden/Universal Render Pipeline/CameraMotionBlur"
         half4 FragTileMax1(VaryingsCMB input)
         {
             UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
-            float2 uv = UnityStereoTransformScreenSpaceTex(input.texcoord.xy);
+            half2 uv = UnityStereoTransformScreenSpaceTex(input.texcoord.xy);
 
-            float4 d = _MotionVectorTexture_TexelSize.xyxy * float4(-0.5, -0.5, 0.5, 0.5);
+            half4 d = _MotionVectorTexture_TexelSize.xyxy * half4(-0.5, -0.5, 0.5, 0.5);
 
             half2 v1 = SAMPLE_TEXTURE2D(_VelocityTex, sampler_LinearClamp, uv + d.xy).rg;
             half2 v2 = SAMPLE_TEXTURE2D(_VelocityTex, sampler_LinearClamp, uv + d.zy).rg;
@@ -238,9 +239,9 @@ Shader "Hidden/Universal Render Pipeline/CameraMotionBlur"
         half4 FragTileMax2(VaryingsCMB input)
         {
             UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
-            float2 uv = UnityStereoTransformScreenSpaceTex(input.texcoord.xy);
+            half2 uv = UnityStereoTransformScreenSpaceTex(input.texcoord.xy);
 
-            float4 d = _Tile2RT_TexelSize.xyxy * float4(-0.5, -0.5, 0.5, 0.5);
+            half4 d = _Tile2RT_TexelSize.xyxy * half4(-0.5, -0.5, 0.5, 0.5);
 
             half2 v1 = SAMPLE_TEXTURE2D(_Tile2RT, sampler_LinearClamp, uv + d.xy).rg;
             half2 v2 = SAMPLE_TEXTURE2D(_Tile2RT, sampler_LinearClamp, uv + d.zy).rg;
@@ -253,9 +254,9 @@ Shader "Hidden/Universal Render Pipeline/CameraMotionBlur"
         half4 FragTileMax4(VaryingsCMB input)
         {
             UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
-            float2 uv = UnityStereoTransformScreenSpaceTex(input.texcoord.xy);
+            half2 uv = UnityStereoTransformScreenSpaceTex(input.texcoord.xy);
 
-            float4 d = _Tile4RT_TexelSize.xyxy * float4(-0.5, -0.5, 0.5, 0.5);
+            half4 d = _Tile4RT_TexelSize.xyxy * half4(-0.5, -0.5, 0.5, 0.5);
 
             half2 v1 = SAMPLE_TEXTURE2D(_Tile4RT, sampler_LinearClamp, uv + d.xy).rg;
             half2 v2 = SAMPLE_TEXTURE2D(_Tile4RT, sampler_LinearClamp, uv + d.zy).rg;
@@ -268,10 +269,9 @@ Shader "Hidden/Universal Render Pipeline/CameraMotionBlur"
         // TileMax filter (variable width)
         half4 FragTileMaxV(VaryingsCMB input)
         {
-            float2 uv0 = input.texcoord + _Tile8RT_TexelSize.xy * _TileMaxOffs.xy;
-
-            float2 du = float2(_Tile8RT_TexelSize.x, 0.0);
-            float2 dv = float2(0.0, _Tile8RT_TexelSize.y);
+            half2 uv0 = input.texcoord + _Tile8RT_TexelSize.xy * _TileMaxOffs.xy;
+            half2 du = half2(_Tile8RT_TexelSize.x, 0.0);
+            half2 dv = half2(0.0, _Tile8RT_TexelSize.y);
 
             half2 vo = 0.0;
 
@@ -281,7 +281,7 @@ Shader "Hidden/Universal Render Pipeline/CameraMotionBlur"
                 UNITY_LOOP
                 for (int iy = 0; iy < _TileMaxLoop; iy++)
                 {
-                    float2 uv = uv0 + du * ix + dv * iy;
+                    half2 uv = uv0 + du * ix + dv * iy;
                     vo = MaxV(vo, SAMPLE_TEXTURE2D(_Tile8RT, sampler_LinearClamp, uv).rg);
                 }
             }
@@ -294,7 +294,7 @@ Shader "Hidden/Universal Render Pipeline/CameraMotionBlur"
         {
             const half cw = 1.01; // Center weight tweak
 
-            float4 d = _TileVRT_TexelSize.xyxy * float4(1.0, 1.0, -1.0, 0.0);
+            half4 d = _TileVRT_TexelSize.xyxy * half4(1.0, 1.0, -1.0, 0.0);
 
             half2 v1 = SAMPLE_TEXTURE2D(_TileVRT, sampler_LinearClamp, input.texcoord - d.xy).rg;
             half2 v2 = SAMPLE_TEXTURE2D(_TileVRT, sampler_LinearClamp, input.texcoord - d.wy).rg;
@@ -323,17 +323,18 @@ Shader "Hidden/Universal Render Pipeline/CameraMotionBlur"
 
         float2 JitterTile(float2 uv)
         {
-            //float rx, ry;
-            //sincos(GradientNoise(uv + float2(2.0, 0.0)) * TWO_PI, ry, rx);
-            //return float2(rx, ry) * _NeighborMaxTex_TexelSize.xy * 0.25;
+            //half rx, ry;
+            //sincos(GradientNoise(uv + half2(2.0, 0.0)) * TWO_PI, ry, rx);
+            //return half2(rx, ry) * _NeighborMaxTex_TexelSize.xy * 0.25;
 
-            return float2(InterleavedGradientNoise(uv * _NeighborMaxTex_TexelSize.xy, 0),InterleavedGradientNoise(uv * _NeighborMaxTex_TexelSize.xy, 1)) * _NeighborMaxTex_TexelSize.xy * 0.25;
+            return half2(InterleavedGradientNoise(uv * _NeighborMaxTex_TexelSize.xy, 0),InterleavedGradientNoise(uv * _NeighborMaxTex_TexelSize.xy, 1)) * _NeighborMaxTex_TexelSize.xy * 0.25;
         }
 
         // Velocity sampling function
-        half3 SampleVelocity(float2 uv)
+        half3 SampleVelocity(half2 uv)
         {
             half3 v = SAMPLE_TEXTURE2D_LOD(_VelocityTex, sampler_LinearClamp, uv, 0.0).xyz;
+            //v = max(v - 0.1f,0.0);
             return half3((v.xy * 2.0 - 1.0) * _MaxBlurRadius, v.z);
         }
 
@@ -345,7 +346,8 @@ Shader "Hidden/Universal Render Pipeline/CameraMotionBlur"
             // Velocity/Depth sample at the center point
             const half3 vd_p = SampleVelocity(input.texcoord);
             const half l_v_p = max(length(vd_p.xy), 0.5);
-            const half rcp_d_p = 1.0 / vd_p.z;
+            //const half rcp_d_p = 1.0 / vd_p.z;
+            const half rcp_d_p = 1.0 / max(vd_p.z, 1e-5);
 
             // NeighborMax vector sample at the center point
             const half2 v_max = SAMPLE_TEXTURE2D(_NeighborMaxTex, sampler_LinearClamp, input.texcoord + JitterTile(input.texcoord)).xy;
@@ -388,17 +390,17 @@ Shader "Hidden/Universal Render Pipeline/CameraMotionBlur"
                 const half l_t = l_v_max * abs(t_s);
 
                 // UVs for the sample position
-                const float2 uv0 = input.texcoord + v_s * t_s * _MotionVectorTexture_TexelSize.xy;
-                const float2 uv1 = input.texcoord + v_s * t_s * _MotionVectorTexture_TexelSize.xy;
+                const half2 uv0 = input.texcoord + v_s * t_s * _MotionVectorTexture_TexelSize.xy;
+                const half2 uv1 = input.texcoord + v_s * t_s * _MotionVectorTexture_TexelSize.xy;
 
                 // Color sample
-                const half3 c = SAMPLE_TEXTURE2D_LOD(_BlitTexture, sampler_LinearClamp, uv0, 0.0).rgb;
+                const half3 c = SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp, uv0).rgb;
 
                 // Velocity/Depth sample
                 const half3 vd = SampleVelocity(uv1);
 
                 // Background/Foreground separation
-                const half fg = saturate((vd_p.z - vd.z) * 20.0 * rcp_d_p);
+                const half fg = saturate((vd_p.z - vd.z) * _Separation * rcp_d_p);
 
                 // Length of the velocity vector
                 const half l_v = lerp(l_v_bg, length(vd.xy), fg);

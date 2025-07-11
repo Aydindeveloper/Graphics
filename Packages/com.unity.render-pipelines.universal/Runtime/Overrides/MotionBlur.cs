@@ -165,6 +165,10 @@ namespace UnityEngine.Rendering.Universal
         [Tooltip("Sets the maximum length, as a fraction of the screen's full resolution, that the velocity resulting from Camera rotation can have. Lower values will improve performance.")]
         public ClampedFloatParameter clamp = new ClampedFloatParameter(0.05f, 0f, 0.2f);
 
+
+        [Tooltip("BackGround / ForGround separation")]
+        public ClampedFloatParameter separation = new ClampedFloatParameter(5.0f, 0f, 100.0f);
+
         /// <summary>
         /// Tells if the post process needs to be rendered or not.
         /// </summary>
