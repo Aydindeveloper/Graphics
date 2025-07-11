@@ -2,6 +2,7 @@ using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering.RenderGraphModule;
 using System;
 using System.Runtime.CompilerServices;
+using System.Data;
 
 namespace UnityEngine.Rendering.Universal
 {
@@ -1534,6 +1535,18 @@ namespace UnityEngine.Rendering.Universal
         {
             internal TextureHandle sourceTexture;
             internal TextureHandle motionVectors;
+            internal TextureHandle VelocitySetup;
+            internal TextureHandle Tile2RT;
+            internal TextureHandle Tile4RT;
+            internal TextureHandle Tile8RT;
+            internal TextureHandle TileVRT;
+            internal TextureHandle NeighborMaxTex;
+
+
+
+
+            internal Vector2 tileMaxOffs;
+
             internal Material material;
             internal int passIndex;
             internal Camera camera;
@@ -1545,22 +1558,60 @@ namespace UnityEngine.Rendering.Universal
 
         public void RenderMotionBlur(RenderGraph renderGraph, UniversalResourceData resourceData, UniversalCameraData cameraData, in TextureHandle source, out TextureHandle destination)
         {
+            var srcDesc = source.GetDescriptor(renderGraph);
             var material = m_Materials.motionBlur;
 
             destination = CreateCompatibleTexture(renderGraph, source, "_MotionBlurTarget", true, FilterMode.Bilinear);
 
+            int tw = srcDesc.width;
+            int th = srcDesc.height;
+
+            //var desc = GetCompatibleDescriptor(srcDesc, tw, th, GraphicsFormat.R16G16B16A16_SFloat);
+            const float kMaxBlurRadius = 5f;
+            // Calculate the maximum blur radius in pixels.
+            int maxBlurPixels = (int)(kMaxBlurRadius * th / 100);
+
+            // Calculate the TileMax size.
+            // It should be a multiple of 8 and larger than maxBlur.
+            int tileSize = ((maxBlurPixels - 1) / 8 + 1) * 8;
+
             TextureHandle motionVectorColor = resourceData.motionVectorColor;
             TextureHandle cameraDepthTexture = resourceData.cameraDepthTexture;
+
+            var VelocitySetupDesc = GetCompatibleDescriptor(srcDesc, tw, th, GraphicsFormat.R16G16B16A16_SFloat);
+            var VelocitySetup = CreateCompatibleTexture(renderGraph, VelocitySetupDesc, "_VelocityTest", true, FilterMode.Bilinear);
+            var Tile2RTDesc = GetCompatibleDescriptor(srcDesc, tw / 2, th / 2, GraphicsFormat.R16G16_SFloat);
+            var Tile2RT = CreateCompatibleTexture(renderGraph, Tile2RTDesc, "_Tile2RT", true, FilterMode.Bilinear);
+            var Tile4RTDesc = GetCompatibleDescriptor(srcDesc, tw / 4, th / 4, GraphicsFormat.R16G16_SFloat);
+            var Tile4RT = CreateCompatibleTexture(renderGraph, Tile4RTDesc, "_Tile4RT", true, FilterMode.Bilinear);
+            var Tile8RTDesc = GetCompatibleDescriptor(srcDesc, tw / 8, th / 8, GraphicsFormat.R16G16_SFloat);
+            var Tile8RT = CreateCompatibleTexture(renderGraph, Tile8RTDesc, "_Tile8RT", true, FilterMode.Bilinear);
+
+            var tileMaxOffs = (tileSize / 8f - 1f) * -0.5f * Vector2.one;
+            //sheet.properties.SetVector(ShaderIDs.TileMaxOffs, tileMaxOffs);
+            //sheet.properties.SetFloat(ShaderIDs.TileMaxLoop, (int)(tileSize / 8f));
+
+            var TileVRTDesc = GetCompatibleDescriptor(srcDesc, tw / tileSize, th / tileSize, GraphicsFormat.R16G16_SFloat);
+            var TileVRT = CreateCompatibleTexture(renderGraph, TileVRTDesc, "_TileVRT", true, FilterMode.Bilinear);
+            var NeighborMaxTexDesc = GetCompatibleDescriptor(srcDesc, tw / tileSize, th / tileSize, GraphicsFormat.R16G16_SFloat);
+            var NeighborMaxTex = CreateCompatibleTexture(renderGraph, NeighborMaxTexDesc, "NeighborMaxTexDesc", true, FilterMode.Bilinear);
+
+            //TextureHandle VelocitySetup = CreateCompatibleTexture(renderGraph, desc, "_VelocityTest", true, FilterMode.Bilinear);
+            //TextureHandle Tile2RT = CreateCompatibleTexture(renderGraph, desc, "_Tile2RT", true, FilterMode.Bilinear);
+
 
             var mode = m_MotionBlur.mode.value;
             int passIndex = (int)m_MotionBlur.quality.value;
             passIndex += (mode == MotionBlurMode.CameraAndObjects) ? 3 : 0;
-
-            using (var builder = renderGraph.AddRasterRenderPass<MotionBlurPassData>("Motion Blur", out var passData, ProfilingSampler.Get(URPProfileId.RG_MotionBlur)))
+            //0
+            using (var builder = renderGraph.AddRasterRenderPass<MotionBlurPassData>("Motion Blur Velocity Setup", out var passData, ProfilingSampler.Get(URPProfileId.RG_MotionBlur)))
             {
                 builder.AllowGlobalStateModification(true);
-                builder.SetRenderAttachment(destination, 0, AccessFlags.Write);
+                builder.SetRenderAttachment(VelocitySetup, 0, AccessFlags.Write);
+
                 passData.sourceTexture = source;
+                passData.VelocitySetup = VelocitySetup;
+
                 builder.UseTexture(source, AccessFlags.Read);
 
                 if (mode == MotionBlurMode.CameraAndObjects)
@@ -1578,6 +1629,413 @@ namespace UnityEngine.Rendering.Universal
 
                 Debug.Assert(cameraDepthTexture.IsValid(), "Camera depth texture is invalid. Per-camera motion blur requires a depth texture.");
                 builder.UseTexture(cameraDepthTexture, AccessFlags.Read);
+                builder.UseTexture(VelocitySetup, AccessFlags.ReadWrite);
+                //builder.UseTexture(Tile2RT, AccessFlags.ReadWrite);
+
+
+                passData.material = material;
+                passData.passIndex = passIndex;
+                passData.camera = cameraData.camera;
+                passData.xr = cameraData.xr;
+                passData.enableAlphaOutput = cameraData.isAlphaOutputEnabled;
+                passData.intensity = m_MotionBlur.intensity.value;
+                passData.clamp = m_MotionBlur.clamp.value;
+                builder.SetRenderFunc(static (MotionBlurPassData data, RasterGraphContext context) =>
+                {
+                    var cmd = context.cmd;
+                    RTHandle VelSetupTextureHdl = data.VelocitySetup;
+
+                    UpdateMotionBlurMatrices(ref data.material, data.camera, data.xr);
+
+                    data.material.SetFloat("_Intensity", data.intensity);
+                    data.material.SetFloat("_Clamp", data.clamp);
+                    data.material.SetFloat("_RcpMaxBlurRadius", data.clamp);
+                    data.material.SetFloat("_MaxBlurRadius", 54);
+
+
+                    CoreUtils.SetKeyword(data.material, ShaderKeywordStrings._ENABLE_ALPHA_OUTPUT, data.enableAlphaOutput);
+
+                    PostProcessUtils.SetSourceSize(cmd, data.sourceTexture);
+                    Vector2 viewportScale = VelSetupTextureHdl.useScaling ? new Vector2(VelSetupTextureHdl.rtHandleProperties.rtHandleScale.x, VelSetupTextureHdl.rtHandleProperties.rtHandleScale.y) : Vector2.one;
+                    Blitter.BlitTexture(cmd, VelSetupTextureHdl, viewportScale, data.material, 0);
+                    //Blitter.BlitTexture(cmd, sourceTextureHdl, viewportScale, data.material, 7);
+                });
+            }
+
+            //1
+            using (var builder = renderGraph.AddRasterRenderPass<MotionBlurPassData>("RT2", out var passData, ProfilingSampler.Get(URPProfileId.RG_MotionBlur)))
+            {
+                builder.AllowGlobalStateModification(true);
+                builder.SetRenderAttachment(Tile2RT, 0, AccessFlags.Write);
+
+                passData.sourceTexture = source;
+                passData.VelocitySetup = VelocitySetup;
+                passData.Tile2RT = Tile2RT;
+
+
+                builder.UseTexture(source, AccessFlags.Read);
+
+                if (mode == MotionBlurMode.CameraAndObjects)
+                {
+                    Debug.Assert(ScriptableRenderer.current.SupportsMotionVectors(), "Current renderer does not support motion vectors.");
+                    Debug.Assert(motionVectorColor.IsValid(), "Motion vectors are invalid. Per-object motion blur requires a motion vector texture.");
+
+                    passData.motionVectors = motionVectorColor;
+                    builder.UseTexture(motionVectorColor, AccessFlags.Read);
+                }
+                else
+                {
+                    passData.motionVectors = TextureHandle.nullHandle;
+                }
+
+                Debug.Assert(cameraDepthTexture.IsValid(), "Camera depth texture is invalid. Per-camera motion blur requires a depth texture.");
+                builder.UseTexture(cameraDepthTexture, AccessFlags.Read);
+                builder.UseTexture(VelocitySetup, AccessFlags.Read);
+                builder.UseTexture(Tile2RT, AccessFlags.Write);
+
+                passData.material = material;
+                passData.passIndex = passIndex;
+                passData.camera = cameraData.camera;
+                passData.xr = cameraData.xr;
+                passData.enableAlphaOutput = cameraData.isAlphaOutputEnabled;
+                passData.intensity = m_MotionBlur.intensity.value;
+                passData.clamp = m_MotionBlur.clamp.value;
+                builder.SetRenderFunc(static (MotionBlurPassData data, RasterGraphContext context) =>
+                {
+                    var cmd = context.cmd;
+                    RTHandle sourceTextureHdl = data.Tile2RT;
+
+                    UpdateMotionBlurMatrices(ref data.material, data.camera, data.xr);
+
+                    data.material.SetFloat("_Intensity", data.intensity);
+                    data.material.SetFloat("_Clamp", data.clamp);
+                    data.material.SetFloat("_RcpMaxBlurRadius", data.clamp);
+                    data.material.SetTexture("_MainTex", data.VelocitySetup);
+                    data.material.SetFloat("_MaxBlurRadius", 54);
+
+
+                    CoreUtils.SetKeyword(data.material, ShaderKeywordStrings._ENABLE_ALPHA_OUTPUT, data.enableAlphaOutput);
+
+                    PostProcessUtils.SetSourceSize(cmd, data.sourceTexture);
+                    Vector2 viewportScale = sourceTextureHdl.useScaling ? new Vector2(sourceTextureHdl.rtHandleProperties.rtHandleScale.x, sourceTextureHdl.rtHandleProperties.rtHandleScale.y) : Vector2.one;
+                    Blitter.BlitTexture(cmd, sourceTextureHdl, viewportScale, data.material, 1);
+                });
+               
+            }
+
+            //2
+            using (var builder = renderGraph.AddRasterRenderPass<MotionBlurPassData>("RT4", out var passData, ProfilingSampler.Get(URPProfileId.RG_MotionBlur)))
+            {
+                builder.AllowGlobalStateModification(true);
+                builder.SetRenderAttachment(Tile4RT, 0, AccessFlags.Write);
+
+                passData.sourceTexture = source;
+                passData.VelocitySetup = VelocitySetup;
+                passData.Tile2RT = Tile2RT;
+                passData.Tile4RT = Tile4RT;
+                
+
+
+                builder.UseTexture(source, AccessFlags.Read);
+
+                if (mode == MotionBlurMode.CameraAndObjects)
+                {
+                    Debug.Assert(ScriptableRenderer.current.SupportsMotionVectors(), "Current renderer does not support motion vectors.");
+                    Debug.Assert(motionVectorColor.IsValid(), "Motion vectors are invalid. Per-object motion blur requires a motion vector texture.");
+
+                    passData.motionVectors = motionVectorColor;
+                    builder.UseTexture(motionVectorColor, AccessFlags.Read);
+                }
+                else
+                {
+                    passData.motionVectors = TextureHandle.nullHandle;
+                }
+
+                Debug.Assert(cameraDepthTexture.IsValid(), "Camera depth texture is invalid. Per-camera motion blur requires a depth texture.");
+                builder.UseTexture(cameraDepthTexture, AccessFlags.Read);
+                builder.UseTexture(VelocitySetup, AccessFlags.Read);
+                builder.UseTexture(Tile2RT, AccessFlags.Read);
+                builder.UseTexture(Tile4RT, AccessFlags.Write);
+
+
+                passData.material = material;
+                passData.passIndex = passIndex;
+                passData.camera = cameraData.camera;
+                passData.xr = cameraData.xr;
+                passData.enableAlphaOutput = cameraData.isAlphaOutputEnabled;
+                passData.intensity = m_MotionBlur.intensity.value;
+                passData.clamp = m_MotionBlur.clamp.value;
+                builder.SetRenderFunc(static (MotionBlurPassData data, RasterGraphContext context) =>
+                {
+                    var cmd = context.cmd;
+                    RTHandle sourceTextureHdl = data.Tile4RT;
+
+                    UpdateMotionBlurMatrices(ref data.material, data.camera, data.xr);
+
+                    data.material.SetFloat("_Intensity", data.intensity);
+                    data.material.SetFloat("_Clamp", data.clamp);
+                    data.material.SetFloat("_RcpMaxBlurRadius", data.clamp);
+                    data.material.SetTexture("_Tile2RT", data.Tile2RT);
+                    data.material.SetFloat("_MaxBlurRadius", 54);
+
+
+                    CoreUtils.SetKeyword(data.material, ShaderKeywordStrings._ENABLE_ALPHA_OUTPUT, data.enableAlphaOutput);
+
+                    PostProcessUtils.SetSourceSize(cmd, data.sourceTexture);
+                    Vector2 viewportScale = sourceTextureHdl.useScaling ? new Vector2(sourceTextureHdl.rtHandleProperties.rtHandleScale.x, sourceTextureHdl.rtHandleProperties.rtHandleScale.y) : Vector2.one;
+                    Blitter.BlitTexture(cmd, sourceTextureHdl, viewportScale, data.material, 2);
+                });
+
+            }
+
+            //6
+            using (var builder = renderGraph.AddRasterRenderPass<MotionBlurPassData>("RT8", out var passData, ProfilingSampler.Get(URPProfileId.RG_MotionBlur)))
+            {
+                builder.AllowGlobalStateModification(true);
+                builder.SetRenderAttachment(Tile8RT, 0, AccessFlags.Write);
+
+                passData.sourceTexture = source;
+                passData.VelocitySetup = VelocitySetup;
+                passData.Tile2RT = Tile2RT;
+                passData.Tile4RT = Tile4RT;
+                passData.Tile8RT = Tile8RT;
+
+
+
+
+                builder.UseTexture(source, AccessFlags.Read);
+
+                if (mode == MotionBlurMode.CameraAndObjects)
+                {
+                    Debug.Assert(ScriptableRenderer.current.SupportsMotionVectors(), "Current renderer does not support motion vectors.");
+                    Debug.Assert(motionVectorColor.IsValid(), "Motion vectors are invalid. Per-object motion blur requires a motion vector texture.");
+
+                    passData.motionVectors = motionVectorColor;
+                    builder.UseTexture(motionVectorColor, AccessFlags.Read);
+                }
+                else
+                {
+                    passData.motionVectors = TextureHandle.nullHandle;
+                }
+
+                Debug.Assert(cameraDepthTexture.IsValid(), "Camera depth texture is invalid. Per-camera motion blur requires a depth texture.");
+                builder.UseTexture(cameraDepthTexture, AccessFlags.Read);
+                builder.UseTexture(VelocitySetup, AccessFlags.Read);
+                builder.UseTexture(Tile2RT, AccessFlags.Read);
+                builder.UseTexture(Tile4RT, AccessFlags.Read);
+                builder.UseTexture(Tile8RT, AccessFlags.Write);
+
+
+
+                passData.material = material;
+                passData.passIndex = passIndex;
+                passData.camera = cameraData.camera;
+                passData.xr = cameraData.xr;
+                passData.enableAlphaOutput = cameraData.isAlphaOutputEnabled;
+                passData.intensity = m_MotionBlur.intensity.value;
+                passData.clamp = m_MotionBlur.clamp.value;
+                builder.SetRenderFunc(static (MotionBlurPassData data, RasterGraphContext context) =>
+                {
+                    var cmd = context.cmd;
+                    RTHandle sourceTextureHdl = data.Tile8RT;
+
+                    UpdateMotionBlurMatrices(ref data.material, data.camera, data.xr);
+
+                    data.material.SetFloat("_Intensity", data.intensity);
+                    data.material.SetFloat("_Clamp", data.clamp);
+                    data.material.SetFloat("_RcpMaxBlurRadius", data.clamp);
+                    data.material.SetTexture("_Tile4RT", data.Tile4RT);
+                    data.material.SetFloat("_MaxBlurRadius", 54);
+
+
+                    CoreUtils.SetKeyword(data.material, ShaderKeywordStrings._ENABLE_ALPHA_OUTPUT, data.enableAlphaOutput);
+
+                    PostProcessUtils.SetSourceSize(cmd, data.sourceTexture);
+                    Vector2 viewportScale = sourceTextureHdl.useScaling ? new Vector2(sourceTextureHdl.rtHandleProperties.rtHandleScale.x, sourceTextureHdl.rtHandleProperties.rtHandleScale.y) : Vector2.one;
+                    Blitter.BlitTexture(cmd, sourceTextureHdl, viewportScale, data.material, 6);
+                });
+
+            }
+
+            //3
+            using (var builder = renderGraph.AddRasterRenderPass<MotionBlurPassData>("RTV", out var passData, ProfilingSampler.Get(URPProfileId.RG_MotionBlur)))
+            {
+                builder.AllowGlobalStateModification(true);
+                builder.SetRenderAttachment(TileVRT, 0, AccessFlags.Write);
+
+                passData.sourceTexture = source;
+                passData.VelocitySetup = VelocitySetup;
+                passData.Tile2RT = Tile2RT;
+                passData.Tile4RT = Tile4RT;
+                passData.Tile8RT = Tile8RT;
+                passData.TileVRT = TileVRT;
+                passData.tileMaxOffs = tileMaxOffs;
+
+
+
+                builder.UseTexture(source, AccessFlags.Read);
+
+                if (mode == MotionBlurMode.CameraAndObjects)
+                {
+                    Debug.Assert(ScriptableRenderer.current.SupportsMotionVectors(), "Current renderer does not support motion vectors.");
+                    Debug.Assert(motionVectorColor.IsValid(), "Motion vectors are invalid. Per-object motion blur requires a motion vector texture.");
+
+                    passData.motionVectors = motionVectorColor;
+                    builder.UseTexture(motionVectorColor, AccessFlags.Read);
+                }
+                else
+                {
+                    passData.motionVectors = TextureHandle.nullHandle;
+                }
+
+                Debug.Assert(cameraDepthTexture.IsValid(), "Camera depth texture is invalid. Per-camera motion blur requires a depth texture.");
+                builder.UseTexture(cameraDepthTexture, AccessFlags.Read);
+                builder.UseTexture(VelocitySetup, AccessFlags.Read);
+                builder.UseTexture(Tile2RT, AccessFlags.Read);
+                builder.UseTexture(Tile4RT, AccessFlags.Read);
+                builder.UseTexture(Tile8RT, AccessFlags.Read);
+                builder.UseTexture(TileVRT, AccessFlags.Write);
+
+
+
+
+                passData.material = material;
+                passData.passIndex = passIndex;
+                passData.camera = cameraData.camera;
+                passData.xr = cameraData.xr;
+                passData.enableAlphaOutput = cameraData.isAlphaOutputEnabled;
+                passData.intensity = m_MotionBlur.intensity.value;
+                passData.clamp = m_MotionBlur.clamp.value;
+                builder.SetRenderFunc(static (MotionBlurPassData data, RasterGraphContext context) =>
+                {
+                    var cmd = context.cmd;
+                    RTHandle sourceTextureHdl = data.TileVRT;
+
+                    UpdateMotionBlurMatrices(ref data.material, data.camera, data.xr);
+
+                    data.material.SetFloat("_Intensity", data.intensity);
+                    data.material.SetFloat("_Clamp", data.clamp);
+                    data.material.SetFloat("_RcpMaxBlurRadius", data.clamp);
+                    data.material.SetTexture("_Tile8RT", data.Tile8RT);
+                    data.material.SetFloat("_MaxBlurRadius", 54);
+                    data.material.SetFloat("_TileMaxLoop", 7);
+                    data.material.SetVector("_TileMaxOffs", new Vector4(data.tileMaxOffs.x, data.tileMaxOffs.y, 0, 0));
+                    CoreUtils.SetKeyword(data.material, ShaderKeywordStrings._ENABLE_ALPHA_OUTPUT, data.enableAlphaOutput);
+
+                    PostProcessUtils.SetSourceSize(cmd, data.sourceTexture);
+                    Vector2 viewportScale = sourceTextureHdl.useScaling ? new Vector2(sourceTextureHdl.rtHandleProperties.rtHandleScale.x, sourceTextureHdl.rtHandleProperties.rtHandleScale.y) : Vector2.one;
+                    Blitter.BlitTexture(cmd, sourceTextureHdl, viewportScale, data.material, 3);
+                });
+
+            }
+
+            //4
+            using (var builder = renderGraph.AddRasterRenderPass<MotionBlurPassData>("NeighborMaxTex", out var passData, ProfilingSampler.Get(URPProfileId.RG_MotionBlur)))
+            {
+                builder.AllowGlobalStateModification(true);
+                builder.SetRenderAttachment(NeighborMaxTex, 0, AccessFlags.Write);
+
+                passData.sourceTexture = source;
+                passData.VelocitySetup = VelocitySetup;
+                passData.Tile2RT = Tile2RT;
+                passData.Tile4RT = Tile4RT;
+                passData.Tile8RT = Tile8RT;
+                passData.TileVRT = TileVRT;
+                passData.NeighborMaxTex = NeighborMaxTex;
+
+
+
+
+
+
+                builder.UseTexture(source, AccessFlags.Read);
+
+                if (mode == MotionBlurMode.CameraAndObjects)
+                {
+                    Debug.Assert(ScriptableRenderer.current.SupportsMotionVectors(), "Current renderer does not support motion vectors.");
+                    Debug.Assert(motionVectorColor.IsValid(), "Motion vectors are invalid. Per-object motion blur requires a motion vector texture.");
+
+                    passData.motionVectors = motionVectorColor;
+                    builder.UseTexture(motionVectorColor, AccessFlags.Read);
+                }
+                else
+                {
+                    passData.motionVectors = TextureHandle.nullHandle;
+                }
+
+                Debug.Assert(cameraDepthTexture.IsValid(), "Camera depth texture is invalid. Per-camera motion blur requires a depth texture.");
+                builder.UseTexture(cameraDepthTexture, AccessFlags.Read);
+                builder.UseTexture(VelocitySetup, AccessFlags.Read);
+                builder.UseTexture(Tile2RT, AccessFlags.Read);
+                builder.UseTexture(Tile4RT, AccessFlags.Read);
+                builder.UseTexture(Tile8RT, AccessFlags.Read);
+                builder.UseTexture(TileVRT, AccessFlags.Read);
+                builder.UseTexture(NeighborMaxTex, AccessFlags.Write);
+
+
+
+
+
+                passData.material = material;
+                passData.passIndex = passIndex;
+                passData.camera = cameraData.camera;
+                passData.xr = cameraData.xr;
+                passData.enableAlphaOutput = cameraData.isAlphaOutputEnabled;
+                passData.intensity = m_MotionBlur.intensity.value;
+                passData.clamp = m_MotionBlur.clamp.value;
+                builder.SetRenderFunc(static (MotionBlurPassData data, RasterGraphContext context) =>
+                {
+                    var cmd = context.cmd;
+                    RTHandle sourceTextureHdl = data.NeighborMaxTex;
+
+                    UpdateMotionBlurMatrices(ref data.material, data.camera, data.xr);
+
+                    data.material.SetFloat("_Intensity", data.intensity);
+                    data.material.SetFloat("_Clamp", data.clamp);
+                    data.material.SetFloat("_RcpMaxBlurRadius", data.clamp);
+                    data.material.SetTexture("_TileVRT", data.TileVRT);
+                    data.material.SetFloat("_MaxBlurRadius", 54);
+
+
+                    CoreUtils.SetKeyword(data.material, ShaderKeywordStrings._ENABLE_ALPHA_OUTPUT, data.enableAlphaOutput);
+
+                    PostProcessUtils.SetSourceSize(cmd, data.sourceTexture);
+                    Vector2 viewportScale = sourceTextureHdl.useScaling ? new Vector2(sourceTextureHdl.rtHandleProperties.rtHandleScale.x, sourceTextureHdl.rtHandleProperties.rtHandleScale.y) : Vector2.one;
+                    Blitter.BlitTexture(cmd, sourceTextureHdl, viewportScale, data.material, 4);
+                });
+
+            }
+
+            //5
+            using (var builder = renderGraph.AddRasterRenderPass<MotionBlurPassData>("Motion Blur Final", out var passData, ProfilingSampler.Get(URPProfileId.RG_MotionBlur)))
+            {
+                builder.AllowGlobalStateModification(true);
+                builder.SetRenderAttachment(destination, 0, AccessFlags.Write);
+
+                passData.sourceTexture = source;
+                passData.VelocitySetup = VelocitySetup;
+                passData.NeighborMaxTex = NeighborMaxTex;
+
+                builder.UseTexture(source, AccessFlags.Read);
+
+                if (mode == MotionBlurMode.CameraAndObjects)
+                {
+                    Debug.Assert(ScriptableRenderer.current.SupportsMotionVectors(), "Current renderer does not support motion vectors.");
+                    Debug.Assert(motionVectorColor.IsValid(), "Motion vectors are invalid. Per-object motion blur requires a motion vector texture.");
+
+                    passData.motionVectors = motionVectorColor;
+                    builder.UseTexture(motionVectorColor, AccessFlags.Read);
+                }
+                else
+                {
+                    passData.motionVectors = TextureHandle.nullHandle;
+                }
+
+                Debug.Assert(cameraDepthTexture.IsValid(), "Camera depth texture is invalid. Per-camera motion blur requires a depth texture.");
+                builder.UseTexture(cameraDepthTexture, AccessFlags.Read);
+                builder.UseTexture(VelocitySetup, AccessFlags.Read);
+                builder.UseTexture(NeighborMaxTex, AccessFlags.Read);
+
                 passData.material = material;
                 passData.passIndex = passIndex;
                 passData.camera = cameraData.camera;
@@ -1594,13 +2052,19 @@ namespace UnityEngine.Rendering.Universal
 
                     data.material.SetFloat("_Intensity", data.intensity);
                     data.material.SetFloat("_Clamp", data.clamp);
+                    data.material.SetFloat("_RcpMaxBlurRadius", data.clamp);
+                    data.material.SetTexture("_VelocityTex", data.VelocitySetup);
+                    data.material.SetTexture("_NeighborMaxTex", data.NeighborMaxTex);
+                    data.material.SetFloat("_LoopCount", 16);
+
+
+
                     CoreUtils.SetKeyword(data.material, ShaderKeywordStrings._ENABLE_ALPHA_OUTPUT, data.enableAlphaOutput);
 
                     PostProcessUtils.SetSourceSize(cmd, data.sourceTexture);
                     Vector2 viewportScale = sourceTextureHdl.useScaling ? new Vector2(sourceTextureHdl.rtHandleProperties.rtHandleScale.x, sourceTextureHdl.rtHandleProperties.rtHandleScale.y) : Vector2.one;
-                    Blitter.BlitTexture(cmd, sourceTextureHdl, viewportScale, data.material, data.passIndex);
+                    Blitter.BlitTexture(cmd, sourceTextureHdl, viewportScale, data.material, 5);
                 });
-
                 return;
             }
         }
