@@ -1633,7 +1633,7 @@ namespace UnityEngine.Rendering.Universal
 
                 Debug.Assert(cameraDepthTexture.IsValid(), "Camera depth texture is invalid. Per-camera motion blur requires a depth texture.");
                 builder.UseTexture(cameraDepthTexture, AccessFlags.Read);
-                builder.UseTexture(VelocitySetup, AccessFlags.ReadWrite);
+                builder.UseTexture(VelocitySetup, AccessFlags.Write);
                 //builder.UseTexture(Tile2RT, AccessFlags.ReadWrite);
 
 
@@ -1749,7 +1749,7 @@ namespace UnityEngine.Rendering.Universal
                     Debug.Assert(motionVectorColor.IsValid(), "Motion vectors are invalid. Per-object motion blur requires a motion vector texture.");
 
                     passData.motionVectors = motionVectorColor;
-                    builder.UseTexture(motionVectorColor, AccessFlags.Read);
+                    //builder.UseTexture(motionVectorColor, AccessFlags.Read);
                 }
                 else
                 {
@@ -1757,8 +1757,8 @@ namespace UnityEngine.Rendering.Universal
                 }
 
                 Debug.Assert(cameraDepthTexture.IsValid(), "Camera depth texture is invalid. Per-camera motion blur requires a depth texture.");
-                builder.UseTexture(cameraDepthTexture, AccessFlags.Read);
-                builder.UseTexture(VelocitySetup, AccessFlags.Read);
+                //builder.UseTexture(cameraDepthTexture, AccessFlags.Read);
+                //builder.UseTexture(VelocitySetup, AccessFlags.Read);
                 builder.UseTexture(Tile2RT, AccessFlags.Read);
                 builder.UseTexture(Tile4RT, AccessFlags.Write);
 
@@ -1800,8 +1800,8 @@ namespace UnityEngine.Rendering.Universal
                 builder.SetRenderAttachment(Tile8RT, 0, AccessFlags.Write);
 
                 passData.sourceTexture = source;
-                passData.VelocitySetup = VelocitySetup;
-                passData.Tile2RT = Tile2RT;
+                //passData.VelocitySetup = VelocitySetup;
+                //passData.Tile2RT = Tile2RT;
                 passData.Tile4RT = Tile4RT;
                 passData.Tile8RT = Tile8RT;
 
@@ -1816,7 +1816,7 @@ namespace UnityEngine.Rendering.Universal
                     Debug.Assert(motionVectorColor.IsValid(), "Motion vectors are invalid. Per-object motion blur requires a motion vector texture.");
 
                     passData.motionVectors = motionVectorColor;
-                    builder.UseTexture(motionVectorColor, AccessFlags.Read);
+                    //builder.UseTexture(motionVectorColor, AccessFlags.Read);
                 }
                 else
                 {
@@ -1824,9 +1824,9 @@ namespace UnityEngine.Rendering.Universal
                 }
 
                 Debug.Assert(cameraDepthTexture.IsValid(), "Camera depth texture is invalid. Per-camera motion blur requires a depth texture.");
-                builder.UseTexture(cameraDepthTexture, AccessFlags.Read);
-                builder.UseTexture(VelocitySetup, AccessFlags.Read);
-                builder.UseTexture(Tile2RT, AccessFlags.Read);
+                //builder.UseTexture(cameraDepthTexture, AccessFlags.Read);
+                //builder.UseTexture(VelocitySetup, AccessFlags.Read);
+                //builder.UseTexture(Tile2RT, AccessFlags.Read);
                 builder.UseTexture(Tile4RT, AccessFlags.Read);
                 builder.UseTexture(Tile8RT, AccessFlags.Write);
 
@@ -1869,24 +1869,24 @@ namespace UnityEngine.Rendering.Universal
                 builder.SetRenderAttachment(TileVRT, 0, AccessFlags.Write);
 
                 passData.sourceTexture = source;
-                passData.VelocitySetup = VelocitySetup;
-                passData.Tile2RT = Tile2RT;
-                passData.Tile4RT = Tile4RT;
+                //passData.VelocitySetup = VelocitySetup;
+                //passData.Tile2RT = Tile2RT;
+                //passData.Tile4RT = Tile4RT;
                 passData.Tile8RT = Tile8RT;
                 passData.TileVRT = TileVRT;
                 passData.tileMaxOffs = tileMaxOffs;
 
 
 
-                builder.UseTexture(source, AccessFlags.Read);
+                //builder.UseTexture(source, AccessFlags.Read);
 
                 if (mode == MotionBlurMode.CameraAndObjects)
                 {
                     Debug.Assert(ScriptableRenderer.current.SupportsMotionVectors(), "Current renderer does not support motion vectors.");
                     Debug.Assert(motionVectorColor.IsValid(), "Motion vectors are invalid. Per-object motion blur requires a motion vector texture.");
 
-                    passData.motionVectors = motionVectorColor;
-                    builder.UseTexture(motionVectorColor, AccessFlags.Read);
+                    //passData.motionVectors = motionVectorColor;
+                    //builder.UseTexture(motionVectorColor, AccessFlags.Read);
                 }
                 else
                 {
@@ -1894,10 +1894,10 @@ namespace UnityEngine.Rendering.Universal
                 }
 
                 Debug.Assert(cameraDepthTexture.IsValid(), "Camera depth texture is invalid. Per-camera motion blur requires a depth texture.");
-                builder.UseTexture(cameraDepthTexture, AccessFlags.Read);
-                builder.UseTexture(VelocitySetup, AccessFlags.Read);
-                builder.UseTexture(Tile2RT, AccessFlags.Read);
-                builder.UseTexture(Tile4RT, AccessFlags.Read);
+                //builder.UseTexture(cameraDepthTexture, AccessFlags.Read);
+                //builder.UseTexture(VelocitySetup, AccessFlags.Read);
+                //builder.UseTexture(Tile2RT, AccessFlags.Read);
+                //builder.UseTexture(Tile4RT, AccessFlags.Read);
                 builder.UseTexture(Tile8RT, AccessFlags.Read);
                 builder.UseTexture(TileVRT, AccessFlags.Write);
 
@@ -1942,9 +1942,9 @@ namespace UnityEngine.Rendering.Universal
 
                 passData.sourceTexture = source;
                 passData.VelocitySetup = VelocitySetup;
-                passData.Tile2RT = Tile2RT;
-                passData.Tile4RT = Tile4RT;
-                passData.Tile8RT = Tile8RT;
+                //passData.Tile2RT = Tile2RT;
+                //passData.Tile4RT = Tile4RT;
+                //passData.Tile8RT = Tile8RT;
                 passData.TileVRT = TileVRT;
                 passData.NeighborMaxTex = NeighborMaxTex;
 
@@ -1969,11 +1969,11 @@ namespace UnityEngine.Rendering.Universal
                 }
 
                 Debug.Assert(cameraDepthTexture.IsValid(), "Camera depth texture is invalid. Per-camera motion blur requires a depth texture.");
-                builder.UseTexture(cameraDepthTexture, AccessFlags.Read);
-                builder.UseTexture(VelocitySetup, AccessFlags.Read);
-                builder.UseTexture(Tile2RT, AccessFlags.Read);
-                builder.UseTexture(Tile4RT, AccessFlags.Read);
-                builder.UseTexture(Tile8RT, AccessFlags.Read);
+                //builder.UseTexture(cameraDepthTexture, AccessFlags.Read);
+                //builder.UseTexture(VelocitySetup, AccessFlags.Read);
+                //builder.UseTexture(Tile2RT, AccessFlags.Read);
+                //builder.UseTexture(Tile4RT, AccessFlags.Read);
+                //builder.UseTexture(Tile8RT, AccessFlags.Read);
                 builder.UseTexture(TileVRT, AccessFlags.Read);
                 builder.UseTexture(NeighborMaxTex, AccessFlags.Write);
 
@@ -2061,7 +2061,7 @@ namespace UnityEngine.Rendering.Universal
                     data.material.SetFloat("_RcpMaxBlurRadius", data.clamp);
                     data.material.SetTexture("_VelocityTex", data.VelocitySetup);
                     data.material.SetTexture("_NeighborMaxTex", data.NeighborMaxTex);
-                    data.material.SetFloat("_LoopCount", 64);
+                    data.material.SetFloat("_LoopCount", 16);
                     data.material.SetFloat("_Separation", data.separation);
 
 
