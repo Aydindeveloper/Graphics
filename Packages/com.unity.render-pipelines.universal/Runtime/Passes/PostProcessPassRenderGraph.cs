@@ -1581,7 +1581,11 @@ namespace UnityEngine.Rendering.Universal
             TextureHandle cameraDepthTexture = resourceData.cameraDepthTexture;
 
             //var VelocitySetupDesc = GetCompatibleDescriptor(srcDesc, tw, th, GraphicsFormat.A2B10G10R10_UNormPack32);
+            //var VelocitySetupDesc = GetCompatibleDescriptor(srcDesc, tw, th, GraphicsFormat.R16G16B16A16_UNorm);
             var VelocitySetupDesc = GetCompatibleDescriptor(srcDesc, tw, th, GraphicsFormat.R16G16B16A16_UNorm);
+
+            //var VelocitySetupDesc = GetCompatibleDescriptor(srcDesc, tw, th, GraphicsFormat.R16G16B16A16_SFloat);
+
 
             var VelocitySetup = CreateCompatibleTexture(renderGraph, VelocitySetupDesc, "_VelocityTest", true, FilterMode.Bilinear);
             var Tile2RTDesc = GetCompatibleDescriptor(srcDesc, tw / 2, th / 2, GraphicsFormat.R16G16_SFloat);
@@ -2061,7 +2065,7 @@ namespace UnityEngine.Rendering.Universal
                     data.material.SetFloat("_RcpMaxBlurRadius", data.clamp);
                     data.material.SetTexture("_VelocityTex", data.VelocitySetup);
                     data.material.SetTexture("_NeighborMaxTex", data.NeighborMaxTex);
-                    data.material.SetFloat("_LoopCount", 16);
+                    data.material.SetFloat("_LoopCount", 32);
                     data.material.SetFloat("_Separation", data.separation);
 
 
