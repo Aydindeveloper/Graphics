@@ -200,13 +200,15 @@ Shader "Hidden/Universal Render Pipeline/CameraMotionBlur"
             v *= (_Intensity * 0.5) * _MotionVectorTexture_TexelSize.zw;
 
             // Clamp the vector with the maximum blur radius.
-            v /= max(1.0, length(v) * 0.0185185);
+            v /= max(1.0, length(v) * 0.0185185); //+ 0.01f;
+
+            //v = clamp(v,-_Clamp * _MotionVectorTexture_TexelSize.zw,_Clamp * _MotionVectorTexture_TexelSize.zw);
 
             // Sample the depth of the pixel.
             d = Linear01Depth(d,_ZBufferParams);
 
             // Pack into 10/10/10/2 format.
-            return half4((v * 0.0185185 + 1.0) * 0.5, d, 0.0);
+            return half4((v * 0.0185185 + 1.0h) * 0.5h, d, 0.0);
 
         }
 
@@ -334,8 +336,12 @@ Shader "Hidden/Universal Render Pipeline/CameraMotionBlur"
         half3 SampleVelocity(half2 uv)
         {
             half3 v = SAMPLE_TEXTURE2D_LOD(_VelocityTex, sampler_LinearClamp, uv, 0.0).xyz;
-            //v = max(v - 0.1f,0.0);
+
+            //v.xy = (v.xy * 2.0 - 1.0);
+            //v.xy = v.xy * (1-step(length(v.xy),0f));
+            //return half3(v.xy * _MaxBlurRadius, v.z);
             return half3((v.xy * 2.0 - 1.0) * _MaxBlurRadius, v.z);
+
         }
 
         half4 FragReconstruction(VaryingsCMB input) : SV_Target
@@ -394,7 +400,7 @@ Shader "Hidden/Universal Render Pipeline/CameraMotionBlur"
                 const half2 uv1 = input.texcoord + v_s * t_s * _MotionVectorTexture_TexelSize.xy;
 
                 // Color sample
-                const half3 c = SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp, uv0).rgb;
+                const half3 c = SAMPLE_TEXTURE2D(_BlitTexture, sampler_MirrorLinear, uv0).rgb;
 
                 // Velocity/Depth sample
                 const half3 vd = SampleVelocity(uv1);
@@ -407,7 +413,7 @@ Shader "Hidden/Universal Render Pipeline/CameraMotionBlur"
 
                 // Sample weight
                 // (Distance test) * (Spreading out by motion) * (Triangular window)
-                const half w = saturate(l_v - l_t) / l_v * (1.2 - t);
+                const half w = saturate(l_v - l_t) / (l_v + 0.001f);
 
                 // Color accumulation
                 acc += half4(c, 1.0) * w;
@@ -423,7 +429,7 @@ Shader "Hidden/Universal Render Pipeline/CameraMotionBlur"
             // Add the center sample.
             acc += half4(c_p.rgb, 1.0) * (1.2 / (l_v_bg * sc * 2.0));
 
-            return half4(acc.rgb / acc.a, c_p.a);
+            return half4(acc.rgb / (acc.a + 0.001f), c_p.a);
         }
 
     ENDHLSL
