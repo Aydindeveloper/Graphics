@@ -10,5 +10,6 @@ SAMPLER(sampler_TrilinearClamp);
 SAMPLER(sampler_PointRepeat);
 SAMPLER(sampler_LinearRepeat);
 SAMPLER(sampler_TrilinearRepeat);
+SAMPLER(sampler_MirrorLinear);
 
 #endif //UNITY_CORE_SAMPLERS_INCLUDED
