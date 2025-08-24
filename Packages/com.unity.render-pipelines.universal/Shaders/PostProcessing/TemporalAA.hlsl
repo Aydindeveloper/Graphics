@@ -367,7 +367,7 @@
         //half SpeedRejection = 1-smoothstep(0, 0.035f,length(velocity));
         half SpeedRejection = 1 - clamp((length(velocity) - 0.01f) * 100, 0.0f, 0.7f);
     
-    half4 workingColor = ApplyHistoryColorLerp(clampedAccumulation, colorCenter, saturate(frameInfluence + (1 - SpeedRejection)));
+        half4 workingColor = ApplyHistoryColorLerp(clampedAccumulation, colorCenter, saturate(frameInfluence + (1 - SpeedRejection)));
 
         half4 dstSceneColor = WorkingSpaceToScene(workingColor);
 
