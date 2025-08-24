@@ -639,21 +639,15 @@ void ScreenSpaceReflectionsReprojection(uint3 dispatchThreadId : SV_DispatchThre
 
     float4 accum = _SSRAccumTexture[COORD_TEXTURE2D_X(positionSS0)];
 
-#define BLOCK_SAMPLE_RADIUS 1
     int samplesCount = 0;
     float4 outputs = 0.0f;
     float wAll = 0.0f;
-    for (int y = -BLOCK_SAMPLE_RADIUS; y <= BLOCK_SAMPLE_RADIUS; ++y)
-    {
-        for (int x = -BLOCK_SAMPLE_RADIUS; x <= BLOCK_SAMPLE_RADIUS; ++x)
-        {
-            if (abs(x) == abs(y) && abs(x) == 1)
-                continue;
 
-            uint2 positionSS = uint2(int2(positionSS0) + int2(x, y));
 
-            float3 color;
-            float opacity;
+            uint2 positionSS = uint2(int2(positionSS0));
+
+            //float3 color;
+            //float opacity;
             float weight;
             float2 hitData = GetSampleInfo(positionSS, color, weight, opacity);
             if (max(hitData.x, hitData.y) != 0.0f && opacity > 0.0f)
@@ -670,9 +664,6 @@ void ScreenSpaceReflectionsReprojection(uint3 dispatchThreadId : SV_DispatchThre
                 outputs += weight * float4(color, 1.0f);
                 wAll += weight;
             }
-        }
-    }
-#undef BLOCK_SAMPLE_RADIUS
 
     if (wAll > 0.0f)
     {
