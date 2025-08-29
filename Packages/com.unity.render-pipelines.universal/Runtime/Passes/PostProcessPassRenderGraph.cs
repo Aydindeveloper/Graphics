@@ -1659,7 +1659,7 @@ namespace UnityEngine.Rendering.Universal
                     data.material.SetFloat("_Intensity", data.intensity);
                     data.material.SetFloat("_Clamp", data.clamp);
                     data.material.SetFloat("_RcpMaxBlurRadius", data.clamp);
-                    data.material.SetFloat("_MaxBlurRadius", 54);
+                    data.material.SetFloat("_MaxBlurRadius", 54 / 2);
 
 
                     CoreUtils.SetKeyword(data.material, ShaderKeywordStrings._ENABLE_ALPHA_OUTPUT, data.enableAlphaOutput);
@@ -1720,7 +1720,7 @@ namespace UnityEngine.Rendering.Universal
                     data.material.SetFloat("_Clamp", data.clamp);
                     data.material.SetFloat("_RcpMaxBlurRadius", data.clamp);
                     data.material.SetTexture("_MainTex", data.VelocitySetup);
-                    data.material.SetFloat("_MaxBlurRadius", 54);
+                    data.material.SetFloat("_MaxBlurRadius", 54 / 2);
 
 
                     CoreUtils.SetKeyword(data.material, ShaderKeywordStrings._ENABLE_ALPHA_OUTPUT, data.enableAlphaOutput);
@@ -1785,7 +1785,7 @@ namespace UnityEngine.Rendering.Universal
                     data.material.SetFloat("_Clamp", data.clamp);
                     data.material.SetFloat("_RcpMaxBlurRadius", data.clamp);
                     data.material.SetTexture("_Tile2RT", data.Tile2RT);
-                    data.material.SetFloat("_MaxBlurRadius", 54);
+                    data.material.SetFloat("_MaxBlurRadius", 54 / 2);
 
 
                     CoreUtils.SetKeyword(data.material, ShaderKeywordStrings._ENABLE_ALPHA_OUTPUT, data.enableAlphaOutput);
@@ -1854,7 +1854,7 @@ namespace UnityEngine.Rendering.Universal
                     data.material.SetFloat("_Clamp", data.clamp);
                     data.material.SetFloat("_RcpMaxBlurRadius", data.clamp);
                     data.material.SetTexture("_Tile4RT", data.Tile4RT);
-                    data.material.SetFloat("_MaxBlurRadius", 54);
+                    data.material.SetFloat("_MaxBlurRadius", 54 / 2);
 
 
                     CoreUtils.SetKeyword(data.material, ShaderKeywordStrings._ENABLE_ALPHA_OUTPUT, data.enableAlphaOutput);
@@ -1926,7 +1926,7 @@ namespace UnityEngine.Rendering.Universal
                     data.material.SetFloat("_Clamp", data.clamp);
                     data.material.SetFloat("_RcpMaxBlurRadius", data.clamp);
                     data.material.SetTexture("_Tile8RT", data.Tile8RT);
-                    data.material.SetFloat("_MaxBlurRadius", 54);
+                    data.material.SetFloat("_MaxBlurRadius", 54 / 2);
                     data.material.SetFloat("_TileMaxLoop", 7);
                     data.material.SetVector("_TileMaxOffs", new Vector4(data.tileMaxOffs.x, data.tileMaxOffs.y, 0, 0));
                     CoreUtils.SetKeyword(data.material, ShaderKeywordStrings._ENABLE_ALPHA_OUTPUT, data.enableAlphaOutput);
@@ -1982,9 +1982,6 @@ namespace UnityEngine.Rendering.Universal
                 builder.UseTexture(NeighborMaxTex, AccessFlags.Write);
 
 
-
-
-
                 passData.material = material;
                 passData.passIndex = passIndex;
                 passData.camera = cameraData.camera;
@@ -2003,7 +2000,7 @@ namespace UnityEngine.Rendering.Universal
                     data.material.SetFloat("_Clamp", data.clamp);
                     data.material.SetFloat("_RcpMaxBlurRadius", data.clamp);
                     data.material.SetTexture("_TileVRT", data.TileVRT);
-                    data.material.SetFloat("_MaxBlurRadius", 54);
+                    data.material.SetFloat("_MaxBlurRadius", 54 / 2);
 
 
                     CoreUtils.SetKeyword(data.material, ShaderKeywordStrings._ENABLE_ALPHA_OUTPUT, data.enableAlphaOutput);
@@ -2065,7 +2062,7 @@ namespace UnityEngine.Rendering.Universal
                     data.material.SetFloat("_RcpMaxBlurRadius", data.clamp);
                     data.material.SetTexture("_VelocityTex", data.VelocitySetup);
                     data.material.SetTexture("_NeighborMaxTex", data.NeighborMaxTex);
-                    data.material.SetFloat("_LoopCount", 32);
+                    data.material.SetFloat("_LoopCount", 8);
                     data.material.SetFloat("_Separation", data.separation);
 
 
@@ -3161,14 +3158,7 @@ namespace UnityEngine.Rendering.Universal
                 currentSource = SMAATarget;
             }
 
-            // Depth of Field
-            // Adreno 3xx SystemInfo.graphicsShaderLevel is 35, but instancing support is disabled due to buggy drivers.
-            // DOF shader uses #pragma target 3.5 which adds requirement for instancing support, thus marking the shader unsupported on those devices.
-            if (useDepthOfField)
-            {
-                RenderDoF(renderGraph, resourceData, cameraData, in currentSource, out var DoFTarget);
-                currentSource = DoFTarget;
-            }
+            
 
             // Temporal Anti Aliasing
             if (useTemporalAA)
@@ -3185,7 +3175,16 @@ namespace UnityEngine.Rendering.Universal
                 }
             }
 
-            if(useMotionBlur)
+            // Depth of Field
+            // Adreno 3xx SystemInfo.graphicsShaderLevel is 35, but instancing support is disabled due to buggy drivers.
+            // DOF shader uses #pragma target 3.5 which adds requirement for instancing support, thus marking the shader unsupported on those devices.
+            if (useDepthOfField)
+            {
+                RenderDoF(renderGraph, resourceData, cameraData, in currentSource, out var DoFTarget);
+                currentSource = DoFTarget;
+            }
+
+            if (useMotionBlur)
             {
                 RenderMotionBlur(renderGraph, resourceData, cameraData, in currentSource, out var MotionBlurTarget);
                 currentSource = MotionBlurTarget;
