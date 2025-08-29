@@ -152,7 +152,7 @@ Shader "Hidden/Universal Render Pipeline/GaussianDepthOfField"
             UNITY_UNROLL
             for (int i = 0; i < kTapCount; i++)
             {
-                float2 sampCoord = uv + kOffsets[i] * offset;
+                float2 sampCoord = uv + kOffsets[i] * offset * half2(2.0f,4.0f);
                 half sampCoC = SAMPLE_TEXTURE2D_X(_HalfCoCTexture, sampler_LinearClamp, sampCoord).x;
                 half4 sampColor = SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_LinearClamp, sampCoord);
 
