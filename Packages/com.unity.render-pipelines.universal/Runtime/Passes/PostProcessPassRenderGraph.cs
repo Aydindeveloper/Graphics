@@ -3,6 +3,7 @@ using UnityEngine.Rendering.RenderGraphModule;
 using System;
 using System.Runtime.CompilerServices;
 using System.Data;
+using static UnityEngine.Rendering.Universal.Internal.DrawObjectsPass;
 
 namespace UnityEngine.Rendering.Universal
 {
@@ -1570,6 +1571,9 @@ namespace UnityEngine.Rendering.Universal
             internal float intensity;
             internal float clamp;
             internal float separation;
+            internal int MaxBlurRadius;
+            internal int tileSize;
+
 
             internal bool enableAlphaOutput;
         }
@@ -1584,13 +1588,10 @@ namespace UnityEngine.Rendering.Universal
             int tw = srcDesc.width;
             int th = srcDesc.height;
 
-            //var desc = GetCompatibleDescriptor(srcDesc, tw, th, GraphicsFormat.R16G16B16A16_SFloat);
-            const float kMaxBlurRadius = 5f;
-            // Calculate the maximum blur radius in pixels.
-            int maxBlurPixels = (int)(kMaxBlurRadius * th / 100);
 
-            // Calculate the TileMax size.
-            // It should be a multiple of 8 and larger than maxBlur.
+            const float kMaxBlurRadius = 5f;
+
+            int maxBlurPixels = (int)(kMaxBlurRadius * th / 100);
             int tileSize = ((maxBlurPixels - 1) / 8 + 1) * 8;
 
             TextureHandle motionVectorColor = resourceData.motionVectorColor;
@@ -1600,29 +1601,30 @@ namespace UnityEngine.Rendering.Universal
             //var VelocitySetupDesc = GetCompatibleDescriptor(srcDesc, tw, th, GraphicsFormat.R16G16B16A16_UNorm);
             var VelocitySetupDesc = GetCompatibleDescriptor(srcDesc, tw, th, GraphicsFormat.R16G16B16A16_UNorm);
 
-            //var VelocitySetupDesc = GetCompatibleDescriptor(srcDesc, tw, th, GraphicsFormat.R16G16B16A16_SFloat);
 
-
-            var VelocitySetup = CreateCompatibleTexture(renderGraph, VelocitySetupDesc, "_VelocityTest", true, FilterMode.Bilinear);
+            var VelocitySetup = CreateCompatibleTexture(renderGraph, VelocitySetupDesc, "_VelocityTest", true, FilterMode.Point);
             var Tile2RTDesc = GetCompatibleDescriptor(srcDesc, tw / 2, th / 2, GraphicsFormat.R16G16_SFloat);
-            var Tile2RT = CreateCompatibleTexture(renderGraph, Tile2RTDesc, "_Tile2RT", true, FilterMode.Bilinear);
+            var Tile2RT = CreateCompatibleTexture(renderGraph, Tile2RTDesc, "_Tile2RT", true, FilterMode.Point);
             var Tile4RTDesc = GetCompatibleDescriptor(srcDesc, tw / 4, th / 4, GraphicsFormat.R16G16_SFloat);
-            var Tile4RT = CreateCompatibleTexture(renderGraph, Tile4RTDesc, "_Tile4RT", true, FilterMode.Bilinear);
+            var Tile4RT = CreateCompatibleTexture(renderGraph, Tile4RTDesc, "_Tile4RT", true, FilterMode.Point);
             var Tile8RTDesc = GetCompatibleDescriptor(srcDesc, tw / 8, th / 8, GraphicsFormat.R16G16_SFloat);
-            var Tile8RT = CreateCompatibleTexture(renderGraph, Tile8RTDesc, "_Tile8RT", true, FilterMode.Bilinear);
+            var Tile8RT = CreateCompatibleTexture(renderGraph, Tile8RTDesc, "_Tile8RT", true, FilterMode.Point);
 
-            var tileMaxOffs = (tileSize / 8f - 1f) * -0.5f * Vector2.one;
-            //sheet.properties.SetVector(ShaderIDs.TileMaxOffs, tileMaxOffs);
-            //sheet.properties.SetFloat(ShaderIDs.TileMaxLoop, (int)(tileSize / 8f));
+            Vector2 tileMaxOffs = (tileSize / 8f - 1f) * -0.5f * Vector2.one;
+
 
             var TileVRTDesc = GetCompatibleDescriptor(srcDesc, tw / tileSize, th / tileSize, GraphicsFormat.R16G16_SFloat);
-            var TileVRT = CreateCompatibleTexture(renderGraph, TileVRTDesc, "_TileVRT", true, FilterMode.Bilinear);
+            var TileVRT = CreateCompatibleTexture(renderGraph, TileVRTDesc, "_TileVRT", true, FilterMode.Point);
             var NeighborMaxTexDesc = GetCompatibleDescriptor(srcDesc, tw / tileSize, th / tileSize, GraphicsFormat.R16G16_SFloat);
-            var NeighborMaxTex = CreateCompatibleTexture(renderGraph, NeighborMaxTexDesc, "NeighborMaxTexDesc", true, FilterMode.Bilinear);
+            var NeighborMaxTex = CreateCompatibleTexture(renderGraph, NeighborMaxTexDesc, "NeighborMaxTexDesc", true, FilterMode.Point);
 
-            //TextureHandle VelocitySetup = CreateCompatibleTexture(renderGraph, desc, "_VelocityTest", true, FilterMode.Bilinear);
-            //TextureHandle Tile2RT = CreateCompatibleTexture(renderGraph, desc, "_Tile2RT", true, FilterMode.Bilinear);
 
+            //material.SetFloat("_MaxBlurRadius", maxBlurPixels);
+            //material.SetFloat("_RcpMaxBlurRadius", 1/ maxBlurPixels);
+            //material.SetVector("_TileMaxOffs", tileMaxOffs);
+            //material.SetInt("_TileMaxLoop", tileSize / 8);
+            //material.SetFloat("_LoopCount", 8);
+            //material.SetFloat("_Separation", 20);
 
             var mode = m_MotionBlur.mode.value;
             int passIndex = (int)m_MotionBlur.quality.value;
@@ -1664,6 +1666,12 @@ namespace UnityEngine.Rendering.Universal
                 passData.enableAlphaOutput = cameraData.isAlphaOutputEnabled;
                 passData.intensity = m_MotionBlur.intensity.value;
                 passData.clamp = m_MotionBlur.clamp.value;
+                passData.separation = m_MotionBlur.separation.value;
+                passData.tileMaxOffs = tileMaxOffs;
+                passData.MaxBlurRadius = maxBlurPixels;
+                passData.tileSize = tileSize;
+
+
 
                 builder.SetRenderFunc(static (MotionBlurPassData data, RasterGraphContext context) =>
                 {
@@ -1674,8 +1682,12 @@ namespace UnityEngine.Rendering.Universal
 
                     data.material.SetFloat("_Intensity", data.intensity);
                     data.material.SetFloat("_Clamp", data.clamp);
-                    data.material.SetFloat("_RcpMaxBlurRadius", data.clamp);
-                    data.material.SetFloat("_MaxBlurRadius", 54 / 2);
+                    data.material.SetFloat("_MaxBlurRadius", data.MaxBlurRadius);
+                    data.material.SetFloat("_RcpMaxBlurRadius", 1.0f / data.MaxBlurRadius);
+                    data.material.SetVector("_TileMaxOffs", data.tileMaxOffs);
+                    data.material.SetInt("_TileMaxLoop", (int)(data.tileSize / 8f));
+                    data.material.SetFloat("_LoopCount", 8);
+                    data.material.SetFloat("_Separation", data.separation);
 
 
                     CoreUtils.SetKeyword(data.material, ShaderKeywordStrings._ENABLE_ALPHA_OUTPUT, data.enableAlphaOutput);
@@ -1725,6 +1737,10 @@ namespace UnityEngine.Rendering.Universal
                 passData.enableAlphaOutput = cameraData.isAlphaOutputEnabled;
                 passData.intensity = m_MotionBlur.intensity.value;
                 passData.clamp = m_MotionBlur.clamp.value;
+                passData.separation = m_MotionBlur.separation.value;
+                passData.tileMaxOffs = tileMaxOffs;
+                passData.MaxBlurRadius = maxBlurPixels;
+                passData.tileSize = tileSize;
                 builder.SetRenderFunc(static (MotionBlurPassData data, RasterGraphContext context) =>
                 {
                     var cmd = context.cmd;
@@ -1732,11 +1748,19 @@ namespace UnityEngine.Rendering.Universal
 
                     UpdateMotionBlurMatrices(ref data.material, data.camera, data.xr);
 
+                    data.material.SetTexture("_MainTex", data.VelocitySetup);
+
                     data.material.SetFloat("_Intensity", data.intensity);
                     data.material.SetFloat("_Clamp", data.clamp);
-                    data.material.SetFloat("_RcpMaxBlurRadius", data.clamp);
-                    data.material.SetTexture("_MainTex", data.VelocitySetup);
-                    data.material.SetFloat("_MaxBlurRadius", 54 / 2);
+                    data.material.SetFloat("_MaxBlurRadius", data.MaxBlurRadius);
+                    data.material.SetFloat("_RcpMaxBlurRadius", 1.0f / data.MaxBlurRadius);
+                    data.material.SetVector("_TileMaxOffs", data.tileMaxOffs);
+                    data.material.SetInt("_TileMaxLoop", (int)(data.tileSize / 8f));
+                    data.material.SetFloat("_LoopCount", 8);
+                    data.material.SetFloat("_Separation", data.separation);
+
+                    //data.material.SetFloat("_RcpMaxBlurRadius", data.clamp);
+                    //data.material.SetFloat("_MaxBlurRadius", 54 / 2);
 
 
                     CoreUtils.SetKeyword(data.material, ShaderKeywordStrings._ENABLE_ALPHA_OUTPUT, data.enableAlphaOutput);
@@ -1790,6 +1814,10 @@ namespace UnityEngine.Rendering.Universal
                 passData.enableAlphaOutput = cameraData.isAlphaOutputEnabled;
                 passData.intensity = m_MotionBlur.intensity.value;
                 passData.clamp = m_MotionBlur.clamp.value;
+                passData.separation = m_MotionBlur.separation.value;
+                passData.tileMaxOffs = tileMaxOffs;
+                passData.MaxBlurRadius = maxBlurPixels;
+                passData.tileSize = tileSize;
                 builder.SetRenderFunc(static (MotionBlurPassData data, RasterGraphContext context) =>
                 {
                     var cmd = context.cmd;
@@ -1797,11 +1825,20 @@ namespace UnityEngine.Rendering.Universal
 
                     UpdateMotionBlurMatrices(ref data.material, data.camera, data.xr);
 
+                    
+                    data.material.SetTexture("_Tile2RT", data.Tile2RT);
+
                     data.material.SetFloat("_Intensity", data.intensity);
                     data.material.SetFloat("_Clamp", data.clamp);
-                    data.material.SetFloat("_RcpMaxBlurRadius", data.clamp);
-                    data.material.SetTexture("_Tile2RT", data.Tile2RT);
-                    data.material.SetFloat("_MaxBlurRadius", 54 / 2);
+                    data.material.SetFloat("_MaxBlurRadius", data.MaxBlurRadius);
+                    data.material.SetFloat("_RcpMaxBlurRadius", 1.0f / data.MaxBlurRadius);
+                    data.material.SetVector("_TileMaxOffs", data.tileMaxOffs);
+                    data.material.SetInt("_TileMaxLoop", (int)(data.tileSize / 8f));
+                    data.material.SetFloat("_LoopCount", 8);
+                    data.material.SetFloat("_Separation", data.separation);
+
+                    //data.material.SetFloat("_RcpMaxBlurRadius", data.clamp);
+                    //data.material.SetFloat("_MaxBlurRadius", 54 / 2);
 
 
                     CoreUtils.SetKeyword(data.material, ShaderKeywordStrings._ENABLE_ALPHA_OUTPUT, data.enableAlphaOutput);
@@ -1859,6 +1896,10 @@ namespace UnityEngine.Rendering.Universal
                 passData.enableAlphaOutput = cameraData.isAlphaOutputEnabled;
                 passData.intensity = m_MotionBlur.intensity.value;
                 passData.clamp = m_MotionBlur.clamp.value;
+                passData.separation = m_MotionBlur.separation.value;
+                passData.tileMaxOffs = tileMaxOffs;
+                passData.MaxBlurRadius = maxBlurPixels;
+                passData.tileSize = tileSize;
                 builder.SetRenderFunc(static (MotionBlurPassData data, RasterGraphContext context) =>
                 {
                     var cmd = context.cmd;
@@ -1866,11 +1907,19 @@ namespace UnityEngine.Rendering.Universal
 
                     UpdateMotionBlurMatrices(ref data.material, data.camera, data.xr);
 
+                    data.material.SetTexture("_Tile4RT", data.Tile4RT);
+
                     data.material.SetFloat("_Intensity", data.intensity);
                     data.material.SetFloat("_Clamp", data.clamp);
-                    data.material.SetFloat("_RcpMaxBlurRadius", data.clamp);
-                    data.material.SetTexture("_Tile4RT", data.Tile4RT);
-                    data.material.SetFloat("_MaxBlurRadius", 54 / 2);
+                    data.material.SetFloat("_MaxBlurRadius", data.MaxBlurRadius);
+                    data.material.SetFloat("_RcpMaxBlurRadius", 1.0f / data.MaxBlurRadius);
+                    data.material.SetVector("_TileMaxOffs", data.tileMaxOffs);
+                    data.material.SetInt("_TileMaxLoop", (int)(data.tileSize / 8f));
+                    data.material.SetFloat("_LoopCount", 8);
+                    data.material.SetFloat("_Separation", data.separation);
+
+                    //data.material.SetFloat("_RcpMaxBlurRadius", data.clamp);
+                    //data.material.SetFloat("_MaxBlurRadius", 54 / 2);
 
 
                     CoreUtils.SetKeyword(data.material, ShaderKeywordStrings._ENABLE_ALPHA_OUTPUT, data.enableAlphaOutput);
@@ -1931,6 +1980,10 @@ namespace UnityEngine.Rendering.Universal
                 passData.enableAlphaOutput = cameraData.isAlphaOutputEnabled;
                 passData.intensity = m_MotionBlur.intensity.value;
                 passData.clamp = m_MotionBlur.clamp.value;
+                passData.separation = m_MotionBlur.separation.value;
+                passData.tileMaxOffs = tileMaxOffs;
+                passData.MaxBlurRadius = maxBlurPixels;
+                passData.tileSize = tileSize;
                 builder.SetRenderFunc(static (MotionBlurPassData data, RasterGraphContext context) =>
                 {
                     var cmd = context.cmd;
@@ -1938,13 +1991,21 @@ namespace UnityEngine.Rendering.Universal
 
                     UpdateMotionBlurMatrices(ref data.material, data.camera, data.xr);
 
+                    data.material.SetTexture("_Tile8RT", data.Tile8RT);
+
                     data.material.SetFloat("_Intensity", data.intensity);
                     data.material.SetFloat("_Clamp", data.clamp);
-                    data.material.SetFloat("_RcpMaxBlurRadius", data.clamp);
-                    data.material.SetTexture("_Tile8RT", data.Tile8RT);
-                    data.material.SetFloat("_MaxBlurRadius", 54 / 2);
-                    data.material.SetFloat("_TileMaxLoop", 7);
-                    data.material.SetVector("_TileMaxOffs", new Vector4(data.tileMaxOffs.x, data.tileMaxOffs.y, 0, 0));
+                    data.material.SetFloat("_MaxBlurRadius", data.MaxBlurRadius);
+                    data.material.SetFloat("_RcpMaxBlurRadius", 1.0f / data.MaxBlurRadius);
+                    data.material.SetVector("_TileMaxOffs", data.tileMaxOffs);
+                    data.material.SetInt("_TileMaxLoop", (int)(data.tileSize / 8f));
+                    data.material.SetFloat("_LoopCount", 8);
+                    data.material.SetFloat("_Separation", data.separation);
+
+                    //data.material.SetFloat("_RcpMaxBlurRadius", data.clamp);
+                    //data.material.SetFloat("_MaxBlurRadius", 54 / 2);
+                    //data.material.SetFloat("_TileMaxLoop", 7);
+                    //data.material.SetVector("_TileMaxOffs", new Vector4(data.tileMaxOffs.x, data.tileMaxOffs.y, 0, 0));
                     CoreUtils.SetKeyword(data.material, ShaderKeywordStrings._ENABLE_ALPHA_OUTPUT, data.enableAlphaOutput);
 
                     PostProcessUtils.SetSourceSize(cmd, data.sourceTexture);
@@ -2005,6 +2066,10 @@ namespace UnityEngine.Rendering.Universal
                 passData.enableAlphaOutput = cameraData.isAlphaOutputEnabled;
                 passData.intensity = m_MotionBlur.intensity.value;
                 passData.clamp = m_MotionBlur.clamp.value;
+                passData.separation = m_MotionBlur.separation.value;
+                passData.tileMaxOffs = tileMaxOffs;
+                passData.MaxBlurRadius = maxBlurPixels;
+                passData.tileSize = tileSize;
                 builder.SetRenderFunc(static (MotionBlurPassData data, RasterGraphContext context) =>
                 {
                     var cmd = context.cmd;
@@ -2012,11 +2077,19 @@ namespace UnityEngine.Rendering.Universal
 
                     UpdateMotionBlurMatrices(ref data.material, data.camera, data.xr);
 
+                    data.material.SetTexture("_TileVRT", data.TileVRT);
+
                     data.material.SetFloat("_Intensity", data.intensity);
                     data.material.SetFloat("_Clamp", data.clamp);
-                    data.material.SetFloat("_RcpMaxBlurRadius", data.clamp);
-                    data.material.SetTexture("_TileVRT", data.TileVRT);
-                    data.material.SetFloat("_MaxBlurRadius", 54 / 2);
+                    data.material.SetFloat("_MaxBlurRadius", data.MaxBlurRadius);
+                    data.material.SetFloat("_RcpMaxBlurRadius", 1.0f / data.MaxBlurRadius);
+                    data.material.SetVector("_TileMaxOffs", data.tileMaxOffs);
+                    data.material.SetInt("_TileMaxLoop", (int)(data.tileSize / 8f));
+                    data.material.SetFloat("_LoopCount", 8);
+                    data.material.SetFloat("_Separation", data.separation);
+
+                    //data.material.SetFloat("_RcpMaxBlurRadius", data.clamp);
+                    //data.material.SetFloat("_MaxBlurRadius", 54 / 2);
 
 
                     CoreUtils.SetKeyword(data.material, ShaderKeywordStrings._ENABLE_ALPHA_OUTPUT, data.enableAlphaOutput);
@@ -2066,6 +2139,9 @@ namespace UnityEngine.Rendering.Universal
                 passData.intensity = m_MotionBlur.intensity.value;
                 passData.clamp = m_MotionBlur.clamp.value;
                 passData.separation = m_MotionBlur.separation.value;
+                passData.tileMaxOffs = tileMaxOffs;
+                passData.MaxBlurRadius = maxBlurPixels;
+                passData.tileSize = tileSize;
                 builder.SetRenderFunc(static (MotionBlurPassData data, RasterGraphContext context) =>
                 {
                     var cmd = context.cmd;
@@ -2073,11 +2149,15 @@ namespace UnityEngine.Rendering.Universal
 
                     UpdateMotionBlurMatrices(ref data.material, data.camera, data.xr);
 
-                    data.material.SetFloat("_Intensity", data.intensity);
-                    data.material.SetFloat("_Clamp", data.clamp);
-                    data.material.SetFloat("_RcpMaxBlurRadius", data.clamp);
                     data.material.SetTexture("_VelocityTex", data.VelocitySetup);
                     data.material.SetTexture("_NeighborMaxTex", data.NeighborMaxTex);
+
+                    data.material.SetFloat("_Intensity", data.intensity);
+                    data.material.SetFloat("_Clamp", data.clamp);
+                    data.material.SetFloat("_MaxBlurRadius", data.MaxBlurRadius);
+                    data.material.SetFloat("_RcpMaxBlurRadius", 1.0f / data.MaxBlurRadius);
+                    data.material.SetVector("_TileMaxOffs", data.tileMaxOffs);
+                    data.material.SetInt("_TileMaxLoop", (int)(data.tileSize / 8f));
                     data.material.SetFloat("_LoopCount", 8);
                     data.material.SetFloat("_Separation", data.separation);
 

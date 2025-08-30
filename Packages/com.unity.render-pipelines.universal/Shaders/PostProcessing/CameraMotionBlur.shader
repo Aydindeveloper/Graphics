@@ -200,7 +200,7 @@ Shader "Hidden/Universal Render Pipeline/CameraMotionBlur"
             v *= (_Intensity * 0.5) * _MotionVectorTexture_TexelSize.zw;
 
             // Clamp the vector with the maximum blur radius.
-            v /= max(1.0, length(v) * (1.0f / _MaxBlurRadius * _Clamp)); //+ 0.01f;
+            v /= max(1.0, length(v) * _RcpMaxBlurRadius); //+ 0.01f;
 
             //v = clamp(v,-_Clamp * _MotionVectorTexture_TexelSize.zw,_Clamp * _MotionVectorTexture_TexelSize.zw);
 
@@ -208,7 +208,7 @@ Shader "Hidden/Universal Render Pipeline/CameraMotionBlur"
             d = Linear01Depth(d,_ZBufferParams);
 
             // Pack into 10/10/10/2 format.
-            return half4((v * (1.0f / _MaxBlurRadius * _Clamp) + 1.0h) * 0.5h, d, 0.0);
+            return half4((v * _RcpMaxBlurRadius + 1.0) * 0.5, d, 0.0);
 
         }
 
@@ -225,10 +225,10 @@ Shader "Hidden/Universal Render Pipeline/CameraMotionBlur"
 
             half4 d = _MotionVectorTexture_TexelSize.xyxy * half4(-0.5, -0.5, 0.5, 0.5);
 
-            half2 v1 = SAMPLE_TEXTURE2D(_VelocityTex, sampler_LinearClamp, uv + d.xy).rg;
-            half2 v2 = SAMPLE_TEXTURE2D(_VelocityTex, sampler_LinearClamp, uv + d.zy).rg;
-            half2 v3 = SAMPLE_TEXTURE2D(_VelocityTex, sampler_LinearClamp, uv + d.xw).rg;
-            half2 v4 = SAMPLE_TEXTURE2D(_VelocityTex, sampler_LinearClamp, uv + d.zw).rg;
+            half2 v1 = SAMPLE_TEXTURE2D(_VelocityTex, sampler_PointClamp, uv + d.xy).rg;
+            half2 v2 = SAMPLE_TEXTURE2D(_VelocityTex, sampler_PointClamp, uv + d.zy).rg;
+            half2 v3 = SAMPLE_TEXTURE2D(_VelocityTex, sampler_PointClamp, uv + d.xw).rg;
+            half2 v4 = SAMPLE_TEXTURE2D(_VelocityTex, sampler_PointClamp, uv + d.zw).rg;
 
             v1 = (v1 * 2.0 - 1.0) * _MaxBlurRadius;
             v2 = (v2 * 2.0 - 1.0) * _MaxBlurRadius;
@@ -245,10 +245,10 @@ Shader "Hidden/Universal Render Pipeline/CameraMotionBlur"
 
             half4 d = _Tile2RT_TexelSize.xyxy * half4(-0.5, -0.5, 0.5, 0.5);
 
-            half2 v1 = SAMPLE_TEXTURE2D(_Tile2RT, sampler_LinearClamp, uv + d.xy).rg;
-            half2 v2 = SAMPLE_TEXTURE2D(_Tile2RT, sampler_LinearClamp, uv + d.zy).rg;
-            half2 v3 = SAMPLE_TEXTURE2D(_Tile2RT, sampler_LinearClamp, uv + d.xw).rg;
-            half2 v4 = SAMPLE_TEXTURE2D(_Tile2RT, sampler_LinearClamp, uv + d.zw).rg;
+            half2 v1 = SAMPLE_TEXTURE2D(_Tile2RT, sampler_PointClamp, uv + d.xy).rg;
+            half2 v2 = SAMPLE_TEXTURE2D(_Tile2RT, sampler_PointClamp, uv + d.zy).rg;
+            half2 v3 = SAMPLE_TEXTURE2D(_Tile2RT, sampler_PointClamp, uv + d.xw).rg;
+            half2 v4 = SAMPLE_TEXTURE2D(_Tile2RT, sampler_PointClamp, uv + d.zw).rg;
 
             return half4(MaxV(MaxV(MaxV(v1, v2), v3), v4), 0.0, 0.0);
         }
@@ -260,10 +260,10 @@ Shader "Hidden/Universal Render Pipeline/CameraMotionBlur"
 
             half4 d = _Tile4RT_TexelSize.xyxy * half4(-0.5, -0.5, 0.5, 0.5);
 
-            half2 v1 = SAMPLE_TEXTURE2D(_Tile4RT, sampler_LinearClamp, uv + d.xy).rg;
-            half2 v2 = SAMPLE_TEXTURE2D(_Tile4RT, sampler_LinearClamp, uv + d.zy).rg;
-            half2 v3 = SAMPLE_TEXTURE2D(_Tile4RT, sampler_LinearClamp, uv + d.xw).rg;
-            half2 v4 = SAMPLE_TEXTURE2D(_Tile4RT, sampler_LinearClamp, uv + d.zw).rg;
+            half2 v1 = SAMPLE_TEXTURE2D(_Tile4RT, sampler_PointClamp, uv + d.xy).rg;
+            half2 v2 = SAMPLE_TEXTURE2D(_Tile4RT, sampler_PointClamp, uv + d.zy).rg;
+            half2 v3 = SAMPLE_TEXTURE2D(_Tile4RT, sampler_PointClamp, uv + d.xw).rg;
+            half2 v4 = SAMPLE_TEXTURE2D(_Tile4RT, sampler_PointClamp, uv + d.zw).rg;
 
             return half4(MaxV(MaxV(MaxV(v1, v2), v3), v4), 0.0, 0.0);
         }
@@ -284,7 +284,7 @@ Shader "Hidden/Universal Render Pipeline/CameraMotionBlur"
                 for (int iy = 0; iy < _TileMaxLoop; iy++)
                 {
                     half2 uv = uv0 + du * ix + dv * iy;
-                    vo = MaxV(vo, SAMPLE_TEXTURE2D(_Tile8RT, sampler_LinearClamp, uv).rg);
+                    vo = MaxV(vo, SAMPLE_TEXTURE2D(_Tile8RT, sampler_PointClamp, uv).rg);
                 }
             }
 
@@ -298,17 +298,17 @@ Shader "Hidden/Universal Render Pipeline/CameraMotionBlur"
 
             half4 d = _TileVRT_TexelSize.xyxy * half4(1.0, 1.0, -1.0, 0.0);
 
-            half2 v1 = SAMPLE_TEXTURE2D(_TileVRT, sampler_LinearClamp, input.texcoord - d.xy).rg;
-            half2 v2 = SAMPLE_TEXTURE2D(_TileVRT, sampler_LinearClamp, input.texcoord - d.wy).rg;
-            half2 v3 = SAMPLE_TEXTURE2D(_TileVRT, sampler_LinearClamp, input.texcoord - d.zy).rg;
+            half2 v1 = SAMPLE_TEXTURE2D(_TileVRT, sampler_PointClamp, input.texcoord - d.xy).rg;
+            half2 v2 = SAMPLE_TEXTURE2D(_TileVRT, sampler_PointClamp, input.texcoord - d.wy).rg;
+            half2 v3 = SAMPLE_TEXTURE2D(_TileVRT, sampler_PointClamp, input.texcoord - d.zy).rg;
 
-            half2 v4 = SAMPLE_TEXTURE2D(_TileVRT, sampler_LinearClamp, input.texcoord - d.xw).rg;
-            half2 v5 = SAMPLE_TEXTURE2D(_TileVRT, sampler_LinearClamp, input.texcoord).rg * cw;
-            half2 v6 = SAMPLE_TEXTURE2D(_TileVRT, sampler_LinearClamp, input.texcoord + d.xw).rg;
+            half2 v4 = SAMPLE_TEXTURE2D(_TileVRT, sampler_PointClamp, input.texcoord - d.xw).rg;
+            half2 v5 = SAMPLE_TEXTURE2D(_TileVRT, sampler_PointClamp, input.texcoord).rg * cw;
+            half2 v6 = SAMPLE_TEXTURE2D(_TileVRT, sampler_PointClamp, input.texcoord + d.xw).rg;
 
-            half2 v7 = SAMPLE_TEXTURE2D(_TileVRT, sampler_LinearClamp, input.texcoord + d.zy).rg;
-            half2 v8 = SAMPLE_TEXTURE2D(_TileVRT, sampler_LinearClamp, input.texcoord + d.wy).rg;
-            half2 v9 = SAMPLE_TEXTURE2D(_TileVRT, sampler_LinearClamp, input.texcoord + d.xy).rg;
+            half2 v7 = SAMPLE_TEXTURE2D(_TileVRT, sampler_PointClamp, input.texcoord + d.zy).rg;
+            half2 v8 = SAMPLE_TEXTURE2D(_TileVRT, sampler_PointClamp, input.texcoord + d.wy).rg;
+            half2 v9 = SAMPLE_TEXTURE2D(_TileVRT, sampler_PointClamp, input.texcoord + d.xy).rg;
 
             half2 va = MaxV(v1, MaxV(v2, v3));
             half2 vb = MaxV(v4, MaxV(v5, v6));
@@ -335,12 +335,16 @@ Shader "Hidden/Universal Render Pipeline/CameraMotionBlur"
         // Velocity sampling function
         half3 SampleVelocity(half2 uv)
         {
-            half3 v = SAMPLE_TEXTURE2D_LOD(_VelocityTex, sampler_LinearClamp, uv, 0.0).xyz;
+            // half3 v = SAMPLE_TEXTURE2D_LOD(_VelocityTex, sampler_LinearClamp, uv, 0.0).xyz;
 
-            v.xy = (v.xy * 2.0 - 1.0);
-            v.xy = v.xy * (1-step(length(v.xy),0.0f));
-            return half3(v.xy * _MaxBlurRadius, v.z);
-            //return half3((v.xy * 2.0 - 1.0) * _MaxBlurRadius, v.z);
+            // v.xy = (v.xy * 2.0 - 1.0);
+            // v.xy = v.xy * (1-step(length(v.xy),0.0f));
+            // return half3(v.xy * _MaxBlurRadius, v.z);
+            // //return half3((v.xy * 2.0 - 1.0) * _MaxBlurRadius, v.z);
+
+
+            half3 v = SAMPLE_TEXTURE2D_LOD(_VelocityTex, sampler_LinearClamp, uv, 0.0).xyz;
+            return half3((v.xy * 2.0 - 1.0) * _MaxBlurRadius, v.z);
 
         }
 
@@ -352,11 +356,10 @@ Shader "Hidden/Universal Render Pipeline/CameraMotionBlur"
             // Velocity/Depth sample at the center point
             const half3 vd_p = SampleVelocity(input.texcoord);
             const half l_v_p = max(length(vd_p.xy), 0.5);
-            //const half rcp_d_p = 1.0 / vd_p.z;
-            const half rcp_d_p = 1.0 / max(vd_p.z, 1e-5);
+            const half rcp_d_p = 1.0 / vd_p.z;
 
             // NeighborMax vector sample at the center point
-            const half2 v_max = SAMPLE_TEXTURE2D(_NeighborMaxTex, sampler_LinearClamp, input.texcoord + JitterTile(input.texcoord)).xy;
+            const half2 v_max = SAMPLE_TEXTURE2D(_NeighborMaxTex, sampler_PointClamp, input.texcoord + JitterTile(input.texcoord)).xy;
             const half l_v_max = length(v_max);
             const half rcp_l_v_max = 1.0 / l_v_max;
 
@@ -413,7 +416,7 @@ Shader "Hidden/Universal Render Pipeline/CameraMotionBlur"
 
                 // Sample weight
                 // (Distance test) * (Spreading out by motion) * (Triangular window)
-                const half w = saturate(l_v - l_t) / (l_v + 0.001f);
+                const half w = saturate(l_v - l_t) / l_v * (1.2 - t);
 
                 // Color accumulation
                 acc += half4(c, 1.0) * w;
@@ -429,7 +432,7 @@ Shader "Hidden/Universal Render Pipeline/CameraMotionBlur"
             // Add the center sample.
             acc += half4(c_p.rgb, 1.0) * (1.2 / (l_v_bg * sc * 2.0));
 
-            return half4(acc.rgb / (acc.a + 0.001f), c_p.a);
+            return half4(acc.rgb / (acc.a), c_p.a);
         }
 
     ENDHLSL
