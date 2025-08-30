@@ -663,11 +663,9 @@ namespace UnityEngine.Rendering.Universal
             }
         }
 
-        public void RenderBloomTexture(RenderGraph renderGraph, in TextureHandle source, out TextureHandle destination, bool enableAlphaOutput)
+        public Vector2Int CalcBloomResolution(Bloom bloom, in TextureDesc bloomSourceDesc)
         {
-            var srcDesc = source.GetDescriptor(renderGraph);
-
-            // Start at half-res
+                        // Start at half-res
             int downres = 1;
             switch (m_Bloom.downscale.value)
             {
@@ -683,13 +681,29 @@ namespace UnityEngine.Rendering.Universal
 
             //We should set the limit the downres result to ensure we dont turn 1x1 textures, which should technically be valid
             //into 0x0 textures which will be invalid
-            int tw = Mathf.Max(1, srcDesc.width >> downres);
-            int th = Mathf.Max(1, srcDesc.height >> downres);
+            int tw = Mathf.Max(1, bloomSourceDesc.width >> downres);
+            int th = Mathf.Max(1, bloomSourceDesc.height >> downres);
 
+            return new Vector2Int(tw, th);
+        }
+
+        public int CalcBloomMipCount(Bloom bloom, Vector2Int bloomResolution)
+        {
             // Determine the iteration count
-            int maxSize = Mathf.Max(tw, th);
+            int maxSize = Mathf.Max(bloomResolution.x, bloomResolution.y);
             int iterations = Mathf.FloorToInt(Mathf.Log(maxSize, 2f) - 1);
             int mipCount = Mathf.Clamp(iterations, 1, m_Bloom.maxIterations.value);
+            return mipCount;
+        }
+
+        public void RenderBloomTexture(RenderGraph renderGraph, in TextureHandle source, out TextureHandle destination, bool enableAlphaOutput)
+        {
+            var srcDesc = source.GetDescriptor(renderGraph);
+
+            Vector2Int bloomRes = CalcBloomResolution(m_Bloom, in srcDesc);
+            int mipCount = CalcBloomMipCount(m_Bloom, bloomRes);
+            int tw = bloomRes.x;
+            int th = bloomRes.y;
 
             // Setup
             using(new ProfilingScope(ProfilingSampler.Get(URPProfileId.RG_BloomSetup)))
@@ -863,7 +877,8 @@ namespace UnityEngine.Rendering.Universal
                         }
                     }
                 });
-                return passData.bloomMipUp[0];
+                // 1st mip is the prefilter.
+                return mipCount == 1 ? passData.bloomMipDown[0] : passData.bloomMipUp[0];
             }
         }
 
@@ -982,7 +997,8 @@ namespace UnityEngine.Rendering.Universal
                         }
                     }
                 });
-                return passData.bloomMipUp[0];
+                // 1st mip is the prefilter.
+                return mipCount == 1 ? passData.bloomMipDown[0] : passData.bloomMipUp[0];
             }
         }
 
@@ -2092,8 +2108,13 @@ namespace UnityEngine.Rendering.Universal
 #if ENABLE_VR && ENABLE_XR_MODULE
             if (xr.enabled && xr.singlePassEnabled)
             {
-                material.SetMatrixArray(ShaderConstants._PrevViewProjMStereo, motionData.previousViewProjectionStereo);
-                material.SetMatrixArray(ShaderConstants._ViewProjMStereo, motionData.viewProjectionStereo);
+                // pass maximum of 2 matrices per pass. Need to access into the matrix array
+                var viewStartIndex = xr.viewCount * xr.multipassId;
+                // Using motionData.stagingMatrixStereo as staging buffer to avoid allocation
+                Array.Copy(motionData.previousViewProjectionStereo, viewStartIndex, motionData.stagingMatrixStereo, 0, xr.viewCount);
+                material.SetMatrixArray(ShaderConstants._PrevViewProjMStereo, motionData.stagingMatrixStereo);
+                Array.Copy(motionData.viewProjectionStereo, viewStartIndex, motionData.stagingMatrixStereo, 0, xr.viewCount);
+                material.SetMatrixArray(ShaderConstants._ViewProjMStereo, motionData.stagingMatrixStereo);
             }
             else
 #endif
@@ -2101,7 +2122,7 @@ namespace UnityEngine.Rendering.Universal
                 int viewProjMIdx = 0;
 #if ENABLE_VR && ENABLE_XR_MODULE
                 if (xr.enabled)
-                    viewProjMIdx = xr.multipassId;
+                    viewProjMIdx = xr.multipassId * xr.viewCount;
 #endif
 
                 // TODO: These should be part of URP main matrix set. For now, we set them here for motion vector rendering.
@@ -2515,14 +2536,20 @@ namespace UnityEngine.Rendering.Universal
             // Scaled FXAA
             using (var builder = renderGraph.AddRasterRenderPass<PostProcessingFinalSetupPassData>("Postprocessing Final Setup Pass", out var passData, ProfilingSampler.Get(URPProfileId.RG_FinalSetup)))
             {
+
+                builder.AllowGlobalStateModification(true);
+                builder.AllowPassCulling(false);
+
                 Material material = m_Materials.scalingSetup;
                 material.shaderKeywords = null;
 
+                material.shaderKeywords = null;
+
                 if (settings.isFxaaEnabled)
-                    material.EnableKeyword(ShaderKeywordStrings.Fxaa);
+                    CoreUtils.SetKeyword(material, ShaderKeywordStrings.Fxaa, settings.isFxaaEnabled);
 
                 if (settings.isFsrEnabled)
-                    material.EnableKeyword(settings.hdrOperations.HasFlag(HDROutputUtils.Operation.ColorEncoding) ? ShaderKeywordStrings.Gamma20AndHDRInput : ShaderKeywordStrings.Gamma20);
+                    CoreUtils.SetKeyword(material, (settings.hdrOperations.HasFlag(HDROutputUtils.Operation.ColorEncoding) ? ShaderKeywordStrings.Gamma20AndHDRInput : ShaderKeywordStrings.Gamma20), true);
 
                 if (settings.hdrOperations.HasFlag(HDROutputUtils.Operation.ColorEncoding))
                     SetupHDROutput(cameraData.hdrDisplayInformation, cameraData.hdrDisplayColorGamut, material, settings.hdrOperations, cameraData.rendersOverlayUI);
@@ -2530,7 +2557,6 @@ namespace UnityEngine.Rendering.Universal
                 if (settings.isAlphaOutputEnabled)
                     CoreUtils.SetKeyword(material, ShaderKeywordStrings._ENABLE_ALPHA_OUTPUT, settings.isAlphaOutputEnabled);
 
-                builder.AllowGlobalStateModification(true);
                 passData.destinationTexture = destination;
                 builder.SetRenderAttachment(destination, 0, AccessFlags.Write);
                 passData.sourceTexture = source;
@@ -2651,6 +2677,7 @@ namespace UnityEngine.Rendering.Universal
             using (var builder = renderGraph.AddRasterRenderPass<PostProcessingFinalBlitPassData>("Postprocessing Final Blit Pass", out var passData, ProfilingSampler.Get(URPProfileId.RG_FinalBlit)))
             {
                 builder.AllowGlobalStateModification(true);
+                builder.AllowPassCulling(false);
                 passData.destinationTexture = postProcessingTarget;
                 builder.SetRenderAttachment(postProcessingTarget, 0, AccessFlags.Write);
                 passData.sourceTexture = source;
@@ -2668,6 +2695,7 @@ namespace UnityEngine.Rendering.Universal
                     // This is a screen-space pass, make sure foveated rendering is disabled for non-uniform renders
                     bool passSupportsFoveation = !XRSystem.foveatedRenderingCaps.HasFlag(FoveatedRenderingCaps.NonUniformRaster);
                     builder.EnableFoveatedRasterization(cameraData.xr.supportsFoveatedRendering && passSupportsFoveation);
+                    builder.SetExtendedFeatureFlags(ExtendedFeatureFlags.MultiviewRenderRegionsCompatible);
                 }
 #endif
 
@@ -2686,8 +2714,7 @@ namespace UnityEngine.Rendering.Universal
 
                     PostProcessUtils.SetSourceSize(cmd, data.sourceTexture);
 
-                    if (isFxaaEnabled)
-                        material.EnableKeyword(ShaderKeywordStrings.Fxaa);
+                    CoreUtils.SetKeyword(material, ShaderKeywordStrings.Fxaa, isFxaaEnabled);
 
                     if (isFsrEnabled)
                     {
@@ -2699,7 +2726,7 @@ namespace UnityEngine.Rendering.Universal
                         if (data.cameraData.fsrSharpness > 0.0f)
                         {
                             // RCAS is performed during the final post blit, but we set up the parameters here for better logical grouping.
-                            material.EnableKeyword(requireHDROutput ? ShaderKeywordStrings.EasuRcasAndHDRInput : ShaderKeywordStrings.Rcas);
+                            CoreUtils.SetKeyword(material, (requireHDROutput ? ShaderKeywordStrings.EasuRcasAndHDRInput : ShaderKeywordStrings.Rcas), true);
                             FSRUtils.SetRcasConstantsLinear(cmd, sharpness);
                         }
                     }
@@ -2707,7 +2734,7 @@ namespace UnityEngine.Rendering.Universal
                     {
                         // Reuse RCAS as a standalone sharpening filter for TAA.
                         // If FSR is enabled then it overrides the sharpening/TAA setting and we skip it.
-                        material.EnableKeyword(ShaderKeywordStrings.Rcas);
+                        CoreUtils.SetKeyword(material, ShaderKeywordStrings.Rcas, true);
                         FSRUtils.SetRcasConstantsLinear(cmd, data.cameraData.taaSettings.contrastAdaptiveSharpening);
                     }
 
@@ -2751,6 +2778,7 @@ namespace UnityEngine.Rendering.Universal
 
         public void RenderFinalPassRenderGraph(RenderGraph renderGraph, ContextContainer frameData, in TextureHandle source, in TextureHandle overlayUITexture, in TextureHandle postProcessingTarget, bool enableColorEncodingIfNeeded)
         {
+
             var stack = VolumeManager.instance.stack;
             m_Tonemapping = stack.GetComponent<Tonemapping>();
             m_FilmGrain = stack.GetComponent<FilmGrain>();
@@ -2797,7 +2825,7 @@ namespace UnityEngine.Rendering.Universal
             }
 
             if (RequireSRGBConversionBlitToBackBuffer(cameraData.requireSrgbConversion))
-                material.EnableKeyword(ShaderKeywordStrings.LinearToSRGBConversion);
+                CoreUtils.SetKeyword(material, ShaderKeywordStrings.LinearToSRGBConversion, true);
 
             settings.hdrOperations = HDROutputUtils.Operation.None;
             settings.requireHDROutput = RequireHDROutput(cameraData);
@@ -2824,7 +2852,13 @@ namespace UnityEngine.Rendering.Universal
             // This avoids the cost of EASU and is available for other upscaling options.
             // If FSR is enabled then FSR settings override the TAA settings and we perform RCAS only once.
             // If STP is enabled, then TAA sharpening has already been performed inside STP.
-            settings.isTaaSharpeningEnabled = (cameraData.IsTemporalAAEnabled() && cameraData.taaSettings.contrastAdaptiveSharpening > 0.0f) && !settings.isFsrEnabled && !cameraData.IsSTPEnabled();
+            settings.isTaaSharpeningEnabled = (cameraData.IsTemporalAAEnabled() && cameraData.taaSettings.contrastAdaptiveSharpening > 0.0f) && !settings.isFsrEnabled && !cameraData.IsSTPEnabled() && 
+#if ENABLE_UPSCALER_FRAMEWORK
+                cameraData.upscalingFilter != ImageUpscalingFilter.IUpscaler
+#else
+                true
+#endif
+                ;
 
             var tempRtDesc = srcDesc;
 
@@ -2978,6 +3012,7 @@ namespace UnityEngine.Rendering.Universal
                     // This is a screen-space pass, make sure foveated rendering is disabled for non-uniform renders
                     passSupportsFoveation &= !XRSystem.foveatedRenderingCaps.HasFlag(FoveatedRenderingCaps.NonUniformRaster);
                     builder.EnableFoveatedRasterization(cameraData.xr.supportsFoveatedRendering && passSupportsFoveation);
+                    builder.SetExtendedFeatureFlags(ExtendedFeatureFlags.MultiviewRenderRegionsCompatible);
                 }
 #endif
 
@@ -2989,11 +3024,9 @@ namespace UnityEngine.Rendering.Universal
                 passData.lutTexture = lutTexture;
                 builder.UseTexture(lutTexture, AccessFlags.Read);
                 passData.lutParams = lutParams;
+                passData.userLutTexture = userLutTexture; // This can be null if ColorLookup is not active.
                 if (userLutTexture.IsValid())
-                {
-                    passData.userLutTexture = userLutTexture;
                     builder.UseTexture(userLutTexture, AccessFlags.Read);
-                }
 
                 if (m_Bloom.IsActive())
                 {
@@ -3031,14 +3064,14 @@ namespace UnityEngine.Rendering.Universal
 
                     if (data.isHdrGrading)
                     {
-                        material.EnableKeyword(ShaderKeywordStrings.HDRGrading);
+                        CoreUtils.SetKeyword(material, ShaderKeywordStrings.HDRGrading, true);
                     }
                     else
                     {
                         switch (data.toneMappingMode)
                         {
-                            case TonemappingMode.Neutral: material.EnableKeyword(ShaderKeywordStrings.TonemapNeutral); break;
-                            case TonemappingMode.ACES: material.EnableKeyword(ShaderKeywordStrings.TonemapACES); break;
+                            case TonemappingMode.Neutral: CoreUtils.SetKeyword(material, ShaderKeywordStrings.TonemapNeutral, true); break;
+                            case TonemappingMode.ACES: CoreUtils.SetKeyword(material, ShaderKeywordStrings.TonemapACES, true); break;
                             default: break; // None
                         }
                     }
@@ -3160,7 +3193,92 @@ namespace UnityEngine.Rendering.Universal
 
             
 
-            // Temporal Anti Aliasing
+            // Temporal Anti Aliasing / Upscaling
+#if ENABLE_UPSCALER_FRAMEWORK
+            if (useTemporalAA && postProcessingData.activeUpscaler != null)
+            {
+                // Create a context item containing upscaling inputs
+                UpscalingIO io = frameData.Create<UpscalingIO>();
+                io.cameraColor = currentSource;
+                io.cameraDepth = resourceData.cameraDepth;
+                io.motionVectorColor = resourceData.motionVectorColor;
+                io.motionVectorDomain = UpscalingIO.MotionVectorDomain.NDC;
+                io.motionVectorDirection = UpscalingIO.MotionVectorDirection.PreviousFrameToCurrentFrame;
+                io.jitteredMotionVectors = false; // URP has no jittering in MVs
+                // io.exposureTexture; // TODO: set exposure texture when available
+                io.preExposureValue = 1.0f; // TODO: set if exposure value is pre-multiplied
+                io.hdrDisplayInformation = cameraData.isHDROutputActive ? cameraData.hdrDisplayInformation : new HDROutputUtils.HDRDisplayInformation(-1, -1, -1, 160.0f);
+                io.preUpscaleResolution = new Vector2Int(
+                    cameraData.cameraTargetDescriptor.width,
+                    cameraData.cameraTargetDescriptor.height
+                );
+                io.previousPreUpscaleResolution = io.preUpscaleResolution; // URP doesn't support Dynamic Resolution Scaling (DRS).
+                io.postUpscaleResolution = new Vector2Int(cameraData.pixelWidth, cameraData.pixelHeight);
+                io.motionVectorTextureSize = io.preUpscaleResolution;
+                io.enableTexArray = cameraData.xr.enabled && cameraData.xr.singlePassEnabled;
+
+                MotionVectorsPersistentData motionData = null;
+                {
+                    cameraData.camera.TryGetComponent<UniversalAdditionalCameraData>(out var additionalCameraData);
+                    Debug.Assert(additionalCameraData != null);
+                    motionData = additionalCameraData.motionVectorsPersistentData;
+                    Debug.Assert(motionData != null);
+                }
+                io.cameraInstanceID = cameraData.camera.GetInstanceID();
+                io.nearClipPlane = cameraData.camera.nearClipPlane;
+                io.farClipPlane = cameraData.camera.farClipPlane;
+                io.fieldOfViewDegrees = cameraData.camera.fieldOfView;
+                io.invertedDepth = SystemInfo.usesReversedZBuffer;
+                io.flippedY = SystemInfo.graphicsUVStartsAtTop;
+                io.flippedX = false;
+                io.hdrInput = GraphicsFormatUtility.IsHDRFormat(currentSource.GetDescriptor(renderGraph).format);
+                io.numActiveViews = cameraData.xr.enabled ? cameraData.xr.viewCount : 1;
+                io.eyeIndex = (cameraData.xr.enabled && !cameraData.xr.singlePassEnabled) ? cameraData.xr.multipassId : 0;
+                io.worldSpaceCameraPositions = new Vector3[io.numActiveViews];
+                io.previousWorldSpaceCameraPositions = new Vector3[io.numActiveViews];
+                io.previousPreviousWorldSpaceCameraPositions = new Vector3[io.numActiveViews];
+                for (int i = 0; i < io.numActiveViews; i++)
+                {
+                    io.worldSpaceCameraPositions[i] = motionData.worldSpaceCameraPos;
+                    io.previousWorldSpaceCameraPositions[i] = motionData.previousWorldSpaceCameraPos;
+                    io.previousPreviousWorldSpaceCameraPositions[i] = motionData.previousPreviousWorldSpaceCameraPos;
+                }
+                io.projectionMatrices = motionData.projectionStereo;
+                io.previousProjectionMatrices = motionData.previousProjectionStereo;
+                io.previousPreviousProjectionMatrices = motionData.previousPreviousProjectionStereo;
+                io.viewMatrices = motionData.viewStereo;
+                io.previousViewMatrices = motionData.previousViewStereo;
+                io.previousPreviousViewMatrices = motionData.previousPreviousViewStereo;
+                io.resetHistory = cameraData.resetHistory;
+                // TODO (Apoorva): Maybe we want to support this?
+                // URP supports adding an offset value to the TAA frame index for testing determinism as follows:
+                //     io.frameIndex = Time.frameCount + settings.jitterFrameCountOffset;
+                io.frameIndex = Time.frameCount;
+                io.deltaTime = motionData.deltaTime;
+                io.previousDeltaTime = motionData.lastDeltaTime;
+                io.blueNoiseTextureSet = m_Materials.resources.textures.blueNoise16LTex;
+
+                // The motion scaling feature is only active outside of test environments. If we allowed it to run
+                // during automated graphics tests, the results of each test run would be dependent on system
+                // performance.
+#if LWRP_DEBUG_STATIC_POSTFX
+                io.enableMotionScaling = false;
+#else
+                io.enableMotionScaling = true;
+#endif
+                io.enableHwDrs = false; // URP doesn't support hardware dynamic resolution scaling
+                // Insert the active upscaler's render graph passes
+                postProcessingData.activeUpscaler.RecordRenderGraph(renderGraph, frameData);
+
+                // Update the camera resolution to reflect the upscaled size
+                var desc = io.cameraColor.GetDescriptor(renderGraph);
+                UpdateCameraResolution(renderGraph, cameraData, new Vector2Int(desc.width, desc.height));
+
+                // Use the output texture of upscaling
+                currentSource = io.cameraColor;
+            }
+            else
+#endif
             if (useTemporalAA)
             {
                 if (useSTP)
@@ -3213,9 +3331,22 @@ namespace UnityEngine.Rendering.Universal
 
                     if (useLensFlareScreenSpace)
                     {
-                        int maxBloomMip = Mathf.Clamp(m_LensFlareScreenSpace.bloomMip.value, 0, m_Bloom.maxIterations.value/2);
-                        TextureHandle bloomMipFlareSource = _BloomMipUp[maxBloomMip];
-                        bool sameBloomInputOutputTex = maxBloomMip == 0;
+                        // We need to take into account how many valid mips the bloom pass produced.
+                        int bloomMipCount = CalcBloomMipCount(m_Bloom, CalcBloomResolution(m_Bloom, in srcDesc));
+                        int maxBloomMip = Mathf.Clamp(bloomMipCount - 1, 0, m_Bloom.maxIterations.value / 2);
+                        int useBloomMip = Mathf.Clamp(m_LensFlareScreenSpace.bloomMip.value, 0, maxBloomMip);
+
+                        TextureHandle bloomMipFlareSource = _BloomMipUp[useBloomMip];
+                        bool sameBloomInputOutputTex = false;
+                        if(useBloomMip == 0)
+                        {
+                            // Hierarchical blooms do only the prefilter if there's only 1 mip.
+                            if (bloomMipCount == 1 && m_Bloom.filter != BloomFilterMode.Kawase)
+                                bloomMipFlareSource = _BloomMipDown[0];
+
+                            // Flare source and Flare target is the same texture. BloomMip[0]
+                            sameBloomInputOutputTex = true; 
+                        }
 
                         // Kawase blur does not use the mip pyramid.
                         // It is safe to pass the same texture to both input/output.
@@ -3246,11 +3377,11 @@ namespace UnityEngine.Rendering.Universal
                 SetupDithering(cameraData, m_Materials.uber);
 
                 if (RequireSRGBConversionBlitToBackBuffer(cameraData.requireSrgbConversion))
-                    m_Materials.uber.EnableKeyword(ShaderKeywordStrings.LinearToSRGBConversion);
+                    CoreUtils.SetKeyword(m_Materials.uber, ShaderKeywordStrings.LinearToSRGBConversion, true);
 
                 if (m_UseFastSRGBLinearConversion)
                 {
-                    m_Materials.uber.EnableKeyword(ShaderKeywordStrings.UseFastSRGBLinearConversion);
+                    CoreUtils.SetKeyword(m_Materials.uber, ShaderKeywordStrings.UseFastSRGBLinearConversion, true);
                 }
 
                 bool requireHDROutput = RequireHDROutput(cameraData);

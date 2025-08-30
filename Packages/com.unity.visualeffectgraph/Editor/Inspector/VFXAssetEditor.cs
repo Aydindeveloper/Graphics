@@ -8,6 +8,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.VFX;
 using UnityEditor.Callbacks;
+using UnityEditor.UIElements;
 using UnityEditor.VFX;
 using UnityEditor.VFX.UI;
 using UnityEngine.UIElements;
@@ -543,15 +544,16 @@ class VisualEffectAssetEditor : UnityEditor.Editor
         if (!prewarmDeltaTime.hasMultipleDifferentValues && !prewarmStepCount.hasMultipleDifferentValues)
         {
             var currentDeltaTime = prewarmDeltaTime.floatValue;
-            var currentStepCount = prewarmStepCount.uintValue;
+            int currentStepCount = (int)prewarmStepCount.uintValue;
             var currentTotalTime = currentDeltaTime * currentStepCount;
             EditorGUI.BeginChangeCheck();
             currentTotalTime = EditorGUILayout.FloatField(EditorGUIUtility.TrTextContent("PreWarm Total Time", "Sets the time in seconds to advance the current effect to when it is initially played. "), currentTotalTime);
             if (EditorGUI.EndChangeCheck())
             {
-                if (currentStepCount <= 0)
+                if (currentStepCount <= 0 && currentTotalTime != 0.0f)
                 {
-                    prewarmStepCount.uintValue = currentStepCount = 1u;
+                    currentStepCount = 1;
+                    prewarmStepCount.uintValue = (uint)currentStepCount;
                 }
 
                 currentDeltaTime = currentTotalTime / currentStepCount;
@@ -560,17 +562,18 @@ class VisualEffectAssetEditor : UnityEditor.Editor
             }
 
             EditorGUI.BeginChangeCheck();
-            currentStepCount = (uint)EditorGUILayout.IntField(EditorGUIUtility.TrTextContent("PreWarm Step Count", "Sets the number of simulation steps the prewarm should be broken down to. "), (int)currentStepCount);
+            currentStepCount = EditorGUILayout.IntField(EditorGUIUtility.TrTextContent("PreWarm Step Count", "Sets the number of simulation steps the prewarm should be broken down to. "), (int)currentStepCount);
             if (EditorGUI.EndChangeCheck())
             {
-                if (currentStepCount <= 0 && currentTotalTime != 0.0f)
+                bool hasPrewarm = currentTotalTime != 0.0f;
+                if (currentStepCount <= 0)
                 {
-                    prewarmStepCount.uintValue = currentStepCount = 1;
+                    currentStepCount = hasPrewarm ? 1 : 0;
                 }
 
-                currentDeltaTime = currentTotalTime == 0.0f ? 0.0f : currentTotalTime / currentStepCount;
+                currentDeltaTime = hasPrewarm ? currentTotalTime / currentStepCount : 0.0f;
                 prewarmDeltaTime.floatValue = currentDeltaTime;
-                prewarmStepCount.uintValue = currentStepCount;
+                prewarmStepCount.uintValue = (uint)currentStepCount;
                 resourceObject.ApplyModifiedProperties();
             }
 
@@ -580,18 +583,18 @@ class VisualEffectAssetEditor : UnityEditor.Editor
             {
                 if (currentDeltaTime < k_MinimalCommonDeltaTime)
                 {
-                    prewarmDeltaTime.floatValue = currentDeltaTime = k_MinimalCommonDeltaTime;
+                    currentDeltaTime = k_MinimalCommonDeltaTime;
                 }
 
-                if (currentDeltaTime > currentTotalTime)
+                float totalTime = currentDeltaTime * currentStepCount;
+                if (totalTime > currentTotalTime)
                 {
-                    currentTotalTime = currentDeltaTime;
+                    currentTotalTime = totalTime;
                 }
-
-                if (currentTotalTime != 0.0f)
+                else
                 {
-                    var candidateStepCount_A = (uint)Mathf.FloorToInt(currentTotalTime / currentDeltaTime);
-                    var candidateStepCount_B = (uint)Mathf.RoundToInt(currentTotalTime / currentDeltaTime);
+                    var candidateStepCount_A = Mathf.FloorToInt(currentTotalTime / currentDeltaTime);
+                    var candidateStepCount_B = Mathf.RoundToInt(currentTotalTime / currentDeltaTime);
 
                     var totalTime_A = currentDeltaTime * candidateStepCount_A;
                     var totalTime_B = currentDeltaTime * candidateStepCount_B;
@@ -605,7 +608,7 @@ class VisualEffectAssetEditor : UnityEditor.Editor
                         currentStepCount = candidateStepCount_B;
                     }
 
-                    prewarmStepCount.uintValue = currentStepCount;
+                    prewarmStepCount.uintValue = (uint)currentStepCount;
                 }
                 prewarmDeltaTime.floatValue = currentDeltaTime;
                 resourceObject.ApplyModifiedProperties();
@@ -628,7 +631,121 @@ class VisualEffectAssetEditor : UnityEditor.Editor
         }
     }
 
-    public override void OnInspectorGUI()
+    public override VisualElement CreateInspectorGUI()
+    {
+        // Create a new root VisualElement
+        var root = new VisualElement { style = { marginLeft = -15f } };
+        var imguiContainer = new IMGUIContainer(OnInspectorGUIEmbedded);
+        root.Add(imguiContainer);
+
+        // Template section uses UIToolkit
+        var importers = new List<VisualEffectImporter>();
+        foreach (var t in targets)
+        {
+            var path = AssetDatabase.GetAssetPath(t);
+            var importer = AssetImporter.GetAtPath(path) as VisualEffectImporter;
+            if (importer != null)
+            {
+                importers.Add(importer);
+            }
+        }
+        if (importers.Count > 0)
+        {
+            root.styleSheets.Add(VFXView.LoadStyleSheet("VisualEffectAssetEditor"));
+            var header = new Label("Template");
+            header.AddToClassList("inspector-header");
+            root.Add(header);
+
+            var useAsTemplateCheckbox = new Toggle("Use as Template") { tooltip = "When enabled, this asset will be used as a template for new Visual Effect Assets" };
+            SetupField(useAsTemplateCheckbox, importers, x => x.useAsTemplateProperty, null, () => importers.ForEach(x => x.useAsTemplateProperty = useAsTemplateCheckbox.value));
+            root.Add(useAsTemplateCheckbox);
+
+            var expander = new Foldout { text = "Template", style = { marginLeft = 15f } };
+            root.Add(expander);
+
+            var nameTooltip = targets.Length == 1
+                ? "Name of the template displayed in the template window"
+                : "When multiple Visual Effect Assets are selected, the template name cannot be edited to avoid conflicts";
+            var nameField = new TextField("Name", 128, false, false, '*') { tooltip = nameTooltip, isDelayed = true };
+            if (importers.Count == 1)
+            {
+                SetupField(nameField, importers, x => x.templateProperty.name, (x, y) => { x.name = y.Trim(); return x; });
+            }
+            else
+            {
+                nameField.enabledSelf = false;
+            }
+            expander.Add(nameField);
+
+            var categoryField = new TextField("Category", 64, false, false, '*') { tooltip = "Category of the template, used to organize templates in the Template window.", isDelayed = true };
+            SetupField(categoryField, importers, x => x.templateProperty.category, (x, y) => { x.category = y.Trim(); return x; });
+            expander.Add(categoryField);
+
+            // TODO: should be multi-line but currently there's an issue when serializing line return in the meta file
+            var descriptionField = new TextField("Description", 256, false, false, '*') { tooltip = "Description of the template, used to provide additional information about the template.", isDelayed = true  };
+            descriptionField.showMixedValue = true;
+            SetupField(descriptionField, importers, x => x.templateProperty.description, (x, y) => { x.description = y.Trim(); return x; });
+            expander.Add(descriptionField);
+
+            var iconField = new ObjectField("Icon") { objectType = typeof(Texture2D), tooltip = "Icon of the template, used to represent the template in the Template window." };
+            SetupField(iconField, importers, x => x.templateProperty.icon, (x, y) => { x.icon = (Texture2D)y; return x; });
+            expander.Add(iconField);
+
+            var thumbnailField = new ObjectField("Thumbnail") { objectType = typeof(Texture2D), tooltip = "Thumbnail of the template, used to represent the template in the Template window details view." };
+            SetupField(thumbnailField, importers, x => x.templateProperty.thumbnail, (x, y) => { x.thumbnail = (Texture2D)y; return x; });
+            expander.Add(thumbnailField);
+
+            if (Application.isPlaying)
+            {
+                root.Add(new HelpBox("When in play mode, the template cannot be modified.", HelpBoxMessageType.Info));
+            }
+        }
+
+        return root;
+    }
+
+    private void SetupField<T>(INotifyValueChanged<T> control, List<VisualEffectImporter> importers, Func<VisualEffectImporter, T> valueGetter, Func<VFXTemplate, T, VFXTemplate> valueSetter, Action fallbackAction = null)
+    {
+        var values = importers.Select(valueGetter.Invoke).Distinct().ToArray();
+        if (values.Length == 1)
+        {
+            control.value = values[0];
+        }
+        else
+        {
+            ((IMixedValueSupport)control).showMixedValue = true;
+        }
+
+        ((VisualElement)control).enabledSelf = !Application.isPlaying;
+        control.RegisterValueChangedCallback(x =>
+        {
+            try
+            {
+                if (valueSetter != null)
+                {
+                    foreach (var importer in importers)
+                    {
+                        importer.templateProperty = valueSetter.Invoke(importer.templateProperty, x.newValue);
+                    }
+                }
+                else
+                {
+                    fallbackAction?.Invoke();
+                }
+
+                var paths = targets.Select(AssetDatabase.GetAssetPath).ToArray();
+                AssetDatabase.ForceReserializeAssets(paths, ForceReserializeAssetsOptions.ReserializeMetadata);
+            }
+            catch (InvalidCastException)
+            {
+                var objectField = control as ObjectField;
+                Debug.LogWarning($"Expected value of type {objectField?.objectType.Name} not {x.newValue.GetType().Name}");
+                control.value = x.previousValue;
+            }
+        });
+    }
+
+    private void OnInspectorGUIEmbedded()
     {
         resourceObject.Update();
 
@@ -872,6 +989,7 @@ class VisualEffectAssetEditor : UnityEditor.Editor
                 }
             }
         }
+
         GUI.enabled = false;
     }
 

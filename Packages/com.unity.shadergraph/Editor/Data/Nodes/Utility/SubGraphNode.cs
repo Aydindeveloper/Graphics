@@ -32,6 +32,7 @@ namespace UnityEditor.ShaderGraph
         , IMayRequireVertexSkinning
         , IMayRequireVertexID
         , IMayRequireInstanceID
+        , IMayRequireUITK
         , IDisposable
     {
         [Serializable]
@@ -108,7 +109,7 @@ namespace UnityEditor.ShaderGraph
         public override string documentationURL {
             get {
                 // TODO: There should be a way for unity authored and distributed subgraphs to provide custom doc links.
-                if (name.Contains("SpeedTree8"))
+                if (m_SubGraph?.name.Contains("SpeedTree8") ?? false)
                     return Documentation.GetPageLink("SpeedTree8-SubGraphAssets");
                 else return Documentation.GetPageLink("Sub-graph");
             }
@@ -150,7 +151,7 @@ namespace UnityEditor.ShaderGraph
                 m_SubGraph.LoadGraphData();
                 m_SubGraph.LoadDependencyData();
 
-                name = m_SubGraph.name;
+                name = ObjectNames.NicifyVariableName(m_SubGraph.name);
             }
         }
 
@@ -422,7 +423,13 @@ namespace UnityEditor.ShaderGraph
                     }
                 }
 
-                MaterialSlot slot = MaterialSlot.CreateMaterialSlot(valueType, id, prop.displayName, prop.referenceName, SlotType.Input, Vector4.zero, ShaderStageCapability.All);
+                MaterialSlot slot;
+                if (prop is Vector1ShaderProperty { LiteralFloatMode: true })
+                {
+                    slot = new Vector1MaterialSlot(id, prop.displayName, prop.referenceName, SlotType.Input, 0, literal:true);
+                }
+                else
+                    slot = MaterialSlot.CreateMaterialSlot(valueType, id, prop.displayName, prop.referenceName, SlotType.Input, Vector4.zero);
 
                 // Copy defaults
                 switch (prop.concreteShaderValueType)
@@ -937,6 +944,14 @@ namespace UnityEditor.ShaderGraph
                 return false;
 
             return asset.requirements.requiresInstanceID;
+        }
+
+        public bool RequiresUITK(ShaderStageCapability stageCapability)
+        {
+            if (asset == null)
+                return false;
+
+            return asset.requirements.requiresUITK;
         }
 
         public string GetDropdownEntryName(string referenceName)
