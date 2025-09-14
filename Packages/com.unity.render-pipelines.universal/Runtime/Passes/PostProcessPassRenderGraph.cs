@@ -1591,7 +1591,7 @@ namespace UnityEngine.Rendering.Universal
 
             const float kMaxBlurRadius = 5f;
 
-            int maxBlurPixels = (int)(kMaxBlurRadius * th / 100);
+            int maxBlurPixels = (int)(kMaxBlurRadius * (th / 100) * m_MotionBlur.clamp.value);
             int tileSize = ((maxBlurPixels - 1) / 8 + 1) * 8;
 
             TextureHandle motionVectorColor = resourceData.motionVectorColor;
