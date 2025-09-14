@@ -38,7 +38,6 @@ Shader "Hidden/Universal Render Pipeline/CameraMotionBlur"
 
         TEXTURE2D_X(_MainTex);
         TEXTURE2D_X(_MotionVectorTexture);
-        TEXTURE2D_X(_MotionVectorDepthTexture);
         TEXTURE2D_X(_VelocityTex);
         float4 _MotionVectorTexture_TexelSize;
 
@@ -189,19 +188,10 @@ Shader "Hidden/Universal Render Pipeline/CameraMotionBlur"
             UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
             float2 uv = UnityStereoTransformScreenSpaceTex(input.texcoord.xy);
 
-            //SAMPLE_TEXTURE2D_X(_MotionVectorDepthTexture, sampler_PointClamp, uv).r
-
             #if UNITY_REVERSED_Z
-                //float d = SampleSceneDepth(uv.xy).x;
-
-                //Depth Attachment Sample
-                float d = SAMPLE_TEXTURE2D_X(_MotionVectorDepthTexture, sampler_PointClamp, uv).r;
+                float d = SampleSceneDepth(uv.xy).x;
             #else
-                //float d = lerp(UNITY_NEAR_CLIP_VALUE, 1, SampleSceneDepth(uv.xy).x);
-
-                //Depth Attachment Sample
-                float d = lerp(UNITY_NEAR_CLIP_VALUE, 1, SAMPLE_TEXTURE2D_X(_MotionVectorDepthTexture, sampler_PointClamp, uv).r);
-
+                float d = lerp(UNITY_NEAR_CLIP_VALUE, 1, SampleSceneDepth(uv.xy).x);
             #endif
 
             float2 v = SAMPLE_TEXTURE2D_X(_MotionVectorTexture, sampler_PointClamp, uv).xy;

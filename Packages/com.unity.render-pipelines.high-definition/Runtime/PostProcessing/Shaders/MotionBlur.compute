@@ -50,7 +50,7 @@ TEXTURE2D_X(_TileMaxNeighbourhood);
 #define TILE_JITTER 1
 // When this is set to 1, samples are taken from both the central direction and the maximum direction in the tile. This reduces bugs when very different velocities are available in a tile.
 // This however also can cause the blur to look slightly different.
-#define GUERTIN2014_DOUBLE_DIR 0
+#define GUERTIN2014_DOUBLE_DIR 1
 #define DOT_WEIGHTING 1
 #define DOT_MULTIPLIER 1 * DOT_WEIGHTING
 

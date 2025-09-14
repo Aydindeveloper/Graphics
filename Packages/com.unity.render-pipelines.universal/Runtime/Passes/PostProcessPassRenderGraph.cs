@@ -1504,7 +1504,7 @@ namespace UnityEngine.Rendering.Universal
         {
             destination = CreateCompatibleTexture(renderGraph, source, _TemporalAATargetName, false, FilterMode.Bilinear);
 
-            TextureHandle cameraDepth = resourceData.activeDepthTexture;
+            TextureHandle cameraDepth = resourceData.cameraDepth;
             TextureHandle motionVectors = resourceData.motionVectorColor;
 
             Debug.Assert(motionVectors.IsValid(), "MotionVectors are invalid. TAA requires a motion vector texture.");

@@ -904,29 +904,15 @@
 //                                                     PRESETS (DON'T CHANGE)
 //==============================================================================================================================
 // High-end mobile.
-//#if (STP_TAA_Q == 0)
-//    #define STP_GEAA_P 1
-//    #define STP_GEAA_SUBPIX (2.0 / 16.0)
-//    #define STP_TAA_PEN_F1 (1.0 / 4.0)
-//    #define STP_TAA_PEN_F0 (1.0 / 2.0)
-//    #define STP_TAA_PEN_W (1.0 / 2.0)
-//    #define STP_TAA_PRX_LANCZOS 1
-//    #define STP_TAA_PRX_LANCZOS_DERING 0
-//#endif // (STP_TAA_Q == 0)
-
-//-------------------------------------------------------------MEA SetUp
-// High-end mobile.
 #if (STP_TAA_Q == 0)
-    #define STP_GEAA_P 3
+    #define STP_GEAA_P 1
     #define STP_GEAA_SUBPIX (2.0 / 16.0)
     #define STP_TAA_PEN_F1 (1.0 / 4.0)
     #define STP_TAA_PEN_F0 (1.0 / 2.0)
     #define STP_TAA_PEN_W (1.0 / 2.0)
-    #define STP_TAA_PRX_LANCZOS 2
-    #define STP_TAA_PRX_LANCZOS_DERING 1
-#endif // (STP_TAA_Q == 1)
-//-------------------------------------------------------------MEA SetUp
-
+    #define STP_TAA_PRX_LANCZOS 1
+    #define STP_TAA_PRX_LANCZOS_DERING 0
+#endif // (STP_TAA_Q == 0)
 //------------------------------------------------------------------------------------------------------------------------------
 // Desktop.
 #if (STP_TAA_Q == 1)

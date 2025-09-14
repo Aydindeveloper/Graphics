@@ -1267,7 +1267,7 @@ namespace UnityEngine.Rendering.Universal
 
             if (isActive)
             {
-                var rtBackend = UnifiedRayTracing.RayTracingBackend.Compute;
+                var rtBackend = RayTracingBackend.Compute;
 
                 {
                     var resources = new RayTracingResources();
