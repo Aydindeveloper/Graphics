@@ -1653,8 +1653,8 @@ namespace UnityEngine.Rendering.Universal
                     passData.motionVectors = TextureHandle.nullHandle;
                 }
 
-                Debug.Assert(cameraDepthTexture.IsValid(), "Camera depth texture is invalid. Per-camera motion blur requires a depth texture.");
-                builder.UseTexture(cameraDepthTexture, AccessFlags.Read);
+                //Debug.Assert(cameraDepthTexture.IsValid(), "Camera depth texture is invalid. Per-camera motion blur requires a depth texture.");
+                builder.UseTexture(motionVectorDepth, AccessFlags.Read);
                 builder.UseTexture(VelocitySetup, AccessFlags.Write);
                 //builder.UseTexture(Tile2RT, AccessFlags.ReadWrite);
 
@@ -1725,8 +1725,8 @@ namespace UnityEngine.Rendering.Universal
                     passData.motionVectors = TextureHandle.nullHandle;
                 }
 
-                Debug.Assert(cameraDepthTexture.IsValid(), "Camera depth texture is invalid. Per-camera motion blur requires a depth texture.");
-                builder.UseTexture(cameraDepthTexture, AccessFlags.Read);
+                //Debug.Assert(cameraDepthTexture.IsValid(), "Camera depth texture is invalid. Per-camera motion blur requires a depth texture.");
+                builder.UseTexture(motionVectorDepth, AccessFlags.Read);
                 builder.UseTexture(VelocitySetup, AccessFlags.Read);
                 builder.UseTexture(Tile2RT, AccessFlags.Write);
 
@@ -1800,7 +1800,7 @@ namespace UnityEngine.Rendering.Universal
                     passData.motionVectors = TextureHandle.nullHandle;
                 }
 
-                Debug.Assert(cameraDepthTexture.IsValid(), "Camera depth texture is invalid. Per-camera motion blur requires a depth texture.");
+                //Debug.Assert(cameraDepthTexture.IsValid(), "Camera depth texture is invalid. Per-camera motion blur requires a depth texture.");
                 //builder.UseTexture(cameraDepthTexture, AccessFlags.Read);
                 //builder.UseTexture(VelocitySetup, AccessFlags.Read);
                 builder.UseTexture(Tile2RT, AccessFlags.Read);
@@ -1880,7 +1880,7 @@ namespace UnityEngine.Rendering.Universal
                     passData.motionVectors = TextureHandle.nullHandle;
                 }
 
-                Debug.Assert(cameraDepthTexture.IsValid(), "Camera depth texture is invalid. Per-camera motion blur requires a depth texture.");
+                //Debug.Assert(cameraDepthTexture.IsValid(), "Camera depth texture is invalid. Per-camera motion blur requires a depth texture.");
                 //builder.UseTexture(cameraDepthTexture, AccessFlags.Read);
                 //builder.UseTexture(VelocitySetup, AccessFlags.Read);
                 //builder.UseTexture(Tile2RT, AccessFlags.Read);
@@ -1962,7 +1962,7 @@ namespace UnityEngine.Rendering.Universal
                     passData.motionVectors = TextureHandle.nullHandle;
                 }
 
-                Debug.Assert(cameraDepthTexture.IsValid(), "Camera depth texture is invalid. Per-camera motion blur requires a depth texture.");
+                //Debug.Assert(cameraDepthTexture.IsValid(), "Camera depth texture is invalid. Per-camera motion blur requires a depth texture.");
                 //builder.UseTexture(cameraDepthTexture, AccessFlags.Read);
                 //builder.UseTexture(VelocitySetup, AccessFlags.Read);
                 //builder.UseTexture(Tile2RT, AccessFlags.Read);
@@ -2049,7 +2049,7 @@ namespace UnityEngine.Rendering.Universal
                     passData.motionVectors = TextureHandle.nullHandle;
                 }
 
-                Debug.Assert(cameraDepthTexture.IsValid(), "Camera depth texture is invalid. Per-camera motion blur requires a depth texture.");
+                //Debug.Assert(cameraDepthTexture.IsValid(), "Camera depth texture is invalid. Per-camera motion blur requires a depth texture.");
                 //builder.UseTexture(cameraDepthTexture, AccessFlags.Read);
                 //builder.UseTexture(VelocitySetup, AccessFlags.Read);
                 //builder.UseTexture(Tile2RT, AccessFlags.Read);
@@ -2126,8 +2126,8 @@ namespace UnityEngine.Rendering.Universal
                     passData.motionVectors = TextureHandle.nullHandle;
                 }
 
-                Debug.Assert(cameraDepthTexture.IsValid(), "Camera depth texture is invalid. Per-camera motion blur requires a depth texture.");
-                builder.UseTexture(cameraDepthTexture, AccessFlags.Read);
+                //Debug.Assert(cameraDepthTexture.IsValid(), "Camera depth texture is invalid. Per-camera motion blur requires a depth texture.");
+                builder.UseTexture(motionVectorDepth, AccessFlags.Read);
                 builder.UseTexture(VelocitySetup, AccessFlags.Read);
                 builder.UseTexture(NeighborMaxTex, AccessFlags.Read);
 
