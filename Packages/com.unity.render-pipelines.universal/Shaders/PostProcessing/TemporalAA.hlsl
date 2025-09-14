@@ -365,7 +365,7 @@
 
         //Smooth Speed Reject;
         //half SpeedRejection = 1-smoothstep(0, 0.035f,length(velocity));
-        half SpeedRejection = 1 - clamp((length(velocity / unity_DeltaTime.x) - 0.2f), 0.0f, 0.6f);
+        half SpeedRejection = 1 - clamp((length(velocity / unity_DeltaTime.x) - 0.2f), 0.0f, 0.7f);
         //half SpeedRejection = 1;
     
      

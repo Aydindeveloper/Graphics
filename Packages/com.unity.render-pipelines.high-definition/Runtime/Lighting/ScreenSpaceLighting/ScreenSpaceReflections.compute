@@ -3,7 +3,7 @@
 //--------------------------------------------------------------------------------------------------
 
 // #pragma enable_d3d11_debug_symbols
-#pragma only_renderers d3d11 playstation xboxone xboxseries vulkan metal switch switch2
+#pragma only_renderers d3d11 playstation xboxone xboxseries vulkan metal switch
 
 #pragma kernel ScreenSpaceReflectionsTracing                                                SSR_TRACE
 #pragma kernel ScreenSpaceReflectionsReprojection                                           SSR_REPROJECT
@@ -105,8 +105,8 @@ TEXTURE2D_X(_DepthTexture);
 #endif
 
     TEXTURE2D_X(            _SsrClearCoatMaskTexture);
-    StructuredBuffer<int2>  _DepthPyramidMipLevelOffsets;
-    StructuredBuffer<uint>  _CoarseStencilBuffer;
+StructuredBuffer<int2> _DepthPyramidMipLevelOffsets;
+StructuredBuffer<uint> _CoarseStencilBuffer;
 
 //--------------------------------------------------------------------------------------------------
 // Helpers
@@ -246,10 +246,10 @@ float3 GetWorldSpacePosition(uint2 positionSS)
 #ifdef DEPTH_SOURCE_NOT_FROM_MIP_CHAIN
     float  deviceDepth = LOAD_TEXTURE2D_X(_DepthTexture, positionSS).r;
 #else
-    float  deviceDepth = LOAD_TEXTURE2D_X(_CameraDepthTexture, positionSS).r;
+    float deviceDepth = LOAD_TEXTURE2D_X(_CameraDepthTexture, positionSS).r;
 #endif
 
-    float2 positionNDC = positionSS *_ScreenSize.zw + (0.5 * _ScreenSize.zw);
+    float2 positionNDC = positionSS * _ScreenSize.zw + (0.5 * _ScreenSize.zw);
 
     return ComputeWorldSpacePosition(positionNDC, deviceDepth, UNITY_MATRIX_I_VP);
 }
@@ -508,13 +508,13 @@ void ScreenSpaceReflectionsTracing(uint3 groupId          : SV_GroupID,
         // - above or exactly on the floor
         // - inside the floor (between the floor and the base)
         // - below the base
-    #if 0
+#if 0
         bool belowFloor  = (raySign.z * (t - distFloor)) <  0;
         bool aboveBase   = (raySign.z * (t - distBase )) >= 0;
-    #else
+#else
         bool belowFloor  = rayPos.z  < bounds.z;
         bool aboveBase   = rayPos.z >= bounds.w;
-    #endif
+#endif
         bool insideFloor = belowFloor && aboveBase;
         bool hitFloor    = (t <= distFloor) && (distFloor <= distWall);
 
@@ -525,11 +525,11 @@ void ScreenSpaceReflectionsTracing(uint3 groupId          : SV_GroupID,
         // Victory conditions:
         // * See below. Do NOT reorder the statements!
 
-    #ifdef SSR_TRACE_BEHIND_OBJECTS
+#ifdef SSR_TRACE_BEHIND_OBJECTS
         miss      = belowMip0 && insideFloor;
-    #else
+#else
         miss      = belowMip0;
-    #endif
+#endif
         hit       = (mipLevel == 0) && (hitFloor || insideFloor);
         belowMip0 = (mipLevel == 0) && belowFloor;
 
@@ -703,128 +703,85 @@ void MAIN_ACC(uint3 dispatchThreadId : SV_DispatchThreadID)
     UNITY_XR_ASSIGN_VIEW_INDEX(dispatchThreadId.z);
     uint2 positionSS = dispatchThreadId.xy;
 
+    // -------------------------------------------------------
+    // GBuffer & SSR Data
+    // -------------------------------------------------------
     float3 N;
     float perceptualRoughness0;
     GetNormalAndPerceptualRoughness(positionSS, N, perceptualRoughness0);
 
-    // Compute the actual roughness
     float roughness = PerceptualRoughnessToRoughness(perceptualRoughness0);
     roughness = clamp(roughness, MIN_GGX_ROUGHNESS, MAX_GGX_ROUGHNESS);
 
-    float4 data0 = _SSRAccumTexture[COORD_TEXTURE2D_X(int2(positionSS))];
+    // Current frame SSR result (noisy)
+    float4 currSSR = _SSRAccumTexture[COORD_TEXTURE2D_X(positionSS)];
 
+    // SSR hitpoint -> NDC
     float2 hitPositionNDC = LOAD_TEXTURE2D_X(_SsrHitPointTexture, positionSS).xy;
 
-    // Approximate the footprint based on the hit normal
-    float2 hitSS = (hitPositionNDC.xy - (0.5 * _ColorPyramidUvScaleAndLimitPrevFrame.zw)) / _ColorPyramidUvScaleAndLimitPrevFrame.zw;
-
-    NormalData hitNormalData;
-    DecodeFromNormalBuffer(hitSS, hitNormalData);
-    float3 hitN = hitNormalData.normalWS;
-
-    float2 prevHistoryScale = _RTHandleScaleHistory.zw / _RTHandleScaleHistory.xy;
-    float4 original = _SSRAccumTexture[COORD_TEXTURE2D_X(positionSS * _RTHandleScaleHistory.zw / _RTHandleScaleHistory.xy)];
-
-    float4 previous = _SsrAccumPrev[COORD_TEXTURE2D_X(positionSS * prevHistoryScale + 0.5f / prevHistoryScale)];
-
-    float2 motionVectorNDC;
-    DecodeMotionVector(SAMPLE_TEXTURE2D_X_LOD(_CameraMotionVectorsTexture, s_linear_clamp_sampler, min(hitPositionNDC.xy, 1.0f - 0.5f * _ScreenSize.zw) * _RTHandleScale.xy, 0), motionVectorNDC);
-
-    float2 motionVectorCenterNDC;
+    // -------------------------------------------------------
+    // Motion Vectors
+    // -------------------------------------------------------
     float2 positionNDC = positionSS * _ScreenSize.zw + (0.5 * _ScreenSize.zw);
-    DecodeMotionVector(SAMPLE_TEXTURE2D_X_LOD(_CameraMotionVectorsTexture, s_linear_clamp_sampler, min(positionNDC, 1.0f - 0.5f * _ScreenSize.zw) * _RTHandleScale.xy, 0), motionVectorCenterNDC);
+    float2 motionVectorCenterNDC;
+    DecodeMotionVector(
+        SAMPLE_TEXTURE2D_X_LOD(
+            _CameraMotionVectorsTexture,
+            s_linear_clamp_sampler,
+            min(positionNDC, 1.0f - 0.5f * _ScreenSize.zw) * _RTHandleScale.xy,
+            0),
+        motionVectorCenterNDC);
 
-#ifdef WORLD_SPEED_REJECTION
-#ifdef DEPTH_SOURCE_NOT_FROM_MIP_CHAIN
-#if USE_SPEED_SURFACE
-    float  deviceDepthSrc = LOAD_TEXTURE2D_X(_DepthTexture, positionSS).r;
-#endif
-#if USE_SPEED_TARGET
-    float  deviceDepthDst = LOAD_TEXTURE2D_X(_DepthTexture, hitSS).r;
-#endif
-#else
-#if USE_SPEED_SURFACE
-    float  deviceDepthSrc = LOAD_TEXTURE2D_X(_CameraDepthTexture, positionSS).r;
-#endif
-#if USE_SPEED_TARGET
-    float  deviceDepthDst = LOAD_TEXTURE2D_X(_CameraDepthTexture, hitSS).r;
-#endif
-#endif
+    // -------------------------------------------------------
+    // History Fetch
+    // -------------------------------------------------------
+    float2 prevHistoryScale = _RTHandleScaleHistory.zw / _RTHandleScaleHistory.xy;
+    float2 historyUV = (positionSS + motionVectorCenterNDC) * prevHistoryScale + 0.5f / prevHistoryScale;
 
-#if USE_SPEED_SURFACE
-    float4 srcMotion = float4(motionVectorCenterNDC.xy, deviceDepthSrc, 0.0f);
-    float4 worldSrcMotion = mul(UNITY_MATRIX_I_VP, srcMotion);
-    worldSrcMotion /= worldSrcMotion.w;
-#endif
+    float4 history = _SsrAccumPrev[COORD_TEXTURE2D_X(historyUV)];
 
-#if USE_SPEED_TARGET
-    float4 dstMotion = float4(motionVectorNDC.xy, deviceDepthDst, 0.0f);
-    float4 worldDstMotion = mul(UNITY_MATRIX_I_VP, dstMotion);
-    worldDstMotion /= worldDstMotion.w;
-#endif
+    // -------------------------------------------------------
+    // Neighborhood Clamp (AABB)
+    // -------------------------------------------------------
+    float MaxFloat = asfloat(0x7f7fffff);
+    float4 minCol = float4(MaxFloat, MaxFloat, MaxFloat, 1);
+    float4 maxCol = float4(-MaxFloat, -MaxFloat, -MaxFloat, -1);
 
-#if USE_SPEED_SURFACE == 1 && USE_SPEED_TARGET == 0
-    float speedDiff = length(worldSrcMotion.xyz);
-#elif USE_SPEED_SURFACE == 0 && USE_SPEED_TARGET == 1
-    float speedDiff = length(worldDstMotion.xyz);
-#elif USE_SPEED_SURFACE == 1 && USE_SPEED_TARGET == 1
-    float speedDiff = length(worldSrcMotion.xyz + worldDstMotion.xyz);
-#else
-    #error need at least one source of motion vector
-#endif
+    float2 texelSize = _ScreenSize.zw;
+    [unroll]
+    for (int dx = -1; dx <= 1; ++dx)
+    {
+        [unroll]
+        for (int dy = -1; dy <= 1; ++dy)
+        {
+            uint2 samplePos = clamp(positionSS + int2(dx, dy), uint2(0,0), (uint2)_ScreenSize.xy - 1);
+            float4 neighbour = _SSRAccumTexture[COORD_TEXTURE2D_X(samplePos)];
+            minCol = min(minCol, neighbour);
+            maxCol = max(maxCol, neighbour);
+        }
+    }
 
-    float usedSpeed = saturate(Normalize01(clamp(speedDiff, 0.0f, _SsrPRBSpeedRejectionScalerFactor), 0.0f, _SsrPRBSpeedRejectionScalerFactor));
+    float4 clampedHistory = clamp(history, minCol, maxCol);
 
-#ifdef SSR_SMOOTH_SPEED_REJECTION
-    float coefExpAvg = lerp(_SsrAccumulationAmount, 1.0f, saturate(usedSpeed * _SsrPBRSpeedRejection));
-#else
-    float coefExpAvg = usedSpeed >= _SsrPBRSpeedRejection ? 1.0f : _SsrAccumulationAmount;
-#endif
-#else
+    // -------------------------------------------------------
+    // Temporal Accumulation
+    // -------------------------------------------------------
+    // _SsrAccumulationAmount ∈ [0..1], small = keep history, large = keep current
+    float alpha = 1.0 - _SsrAccumulationAmount;
+    float4 result = lerp(currSSR, clampedHistory, alpha);
 
-#if USE_SPEED_SURFACE == 1 && USE_SPEED_TARGET == 0
-    float speedUsedLocally = length(motionVectorCenterNDC);
-#elif USE_SPEED_SURFACE == 0 && USE_SPEED_TARGET == 1
-    float speedUsedLocally = length(motionVectorNDC);
-#elif USE_SPEED_SURFACE == 1 && USE_SPEED_TARGET == 1
-    float speedSrc = length(motionVectorCenterNDC);
-    float speedDst = length(motionVectorNDC);
-    float speedUsedLocally = speedSrc + speedDst;
-#else
-    #error need at least one source of motion vector
-#endif
-
-    // 128 is an arbitrary value used historical
-    // 0.5f is the default for the parameter 'Speed Rejection': ScreenSpaceReflection.cs 'speedRejectionParam'
-    // 0.2f is the default for the parameter 'Speed Rejection Scaler Factor': ScreenSpaceReflection.cs 'speedRejectionScalerFactor'
-    float speed = saturate(speedUsedLocally * (128.0f / (0.5f * 0.2f)) * _SsrPBRSpeedRejection);
-
-    float coefExpAvg = lerp(_SsrAccumulationAmount, 1.0f, speed);
-#endif
-
-    float4 result = lerp(previous, original, coefExpAvg);
-
-#ifdef REJECT_DEBUG_COLOR
-#ifdef WORLD_SPEED_REJECTION
-    #ifdef SSR_SMOOTH_SPEED_REJECTION
-        result.rgb = Colorize(result.rgb, HsvToRgb(lerp(float3(0.33333333333333333333333333f, 1.0f, 1.0f), float3(0.0f, 1.0f, 1.0f), saturate(coefExpAvg))));
-    #else
-        if (usedSpeed >= _SsrPBRSpeedRejection)
-            result.rgb = Colorize(result.rgb, float3(1.0f, 0.0f, 0.0f));
-        else
-            result.rgb = Colorize(result.rgb, float3(0.0f, 1.0f, 0.0f));
-    #endif
-#else
-    result.rgb = Colorize(result.rgb, HsvToRgb(lerp(float3(0.33333333333333333333333333f, 1.0f, 1.0f), float3(0.0f, 1.0f, 1.0f), saturate(coefExpAvg))));
-#endif
-#endif
-
+    // -------------------------------------------------------
+    // NaN / Inf Kill
+    // -------------------------------------------------------
     uint3 intCol = asuint(result.rgb);
-    bool  isPosFin = Max3(intCol.r, intCol.g, intCol.b) < 0x7F800000;
+    bool isFinite = Max3(intCol.r, intCol.g, intCol.b) < 0x7F800000;
 
-    result.rgb = isPosFin ? result.rgb : 0;
-    result.w = isPosFin ? result.w : 0;
+    result.rgb = isFinite ? result.rgb : 0;
+    result.a   = isFinite ? result.a   : 0;
 
+    // -------------------------------------------------------
+    // Store
+    // -------------------------------------------------------
     _SSRAccumTexture[COORD_TEXTURE2D_X(positionSS)] = result;
 }
 
