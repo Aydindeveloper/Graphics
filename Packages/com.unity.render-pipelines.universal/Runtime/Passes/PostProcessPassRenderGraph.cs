@@ -1595,7 +1595,7 @@ namespace UnityEngine.Rendering.Universal
             int tileSize = ((maxBlurPixels - 1) / 8 + 1) * 8;
 
             TextureHandle motionVectorColor = resourceData.motionVectorColor;
-            TextureHandle cameraDepthTexture = resourceData.cameraDepthTexture;
+            TextureHandle motionVectorDepth = resourceData.motionVectorDepth;
 
             //var VelocitySetupDesc = GetCompatibleDescriptor(srcDesc, tw, th, GraphicsFormat.A2B10G10R10_UNormPack32);
             //var VelocitySetupDesc = GetCompatibleDescriptor(srcDesc, tw, th, GraphicsFormat.R16G16B16A16_UNorm);
