@@ -53,13 +53,6 @@ Shader "Hidden/Universal Render Pipeline/CameraMotionBlur"
         float4 _TileVRT_TexelSize;
         float4 _NeighborMaxTex_TexelSize;
 
-
-
-
-
-
-        
-
         struct VaryingsCMB
         {
             float4 positionCS    : SV_POSITION;
@@ -86,103 +79,103 @@ Shader "Hidden/Universal Render Pipeline/CameraMotionBlur"
             return output;
         }
 
-        float2 ClampVelocity(float2 velocity, float maxVelocity)
-        {
-            float len = length(velocity);
-            return (len > 0.0) ? min(len, maxVelocity) * (velocity * rcp(len)) : 0.0;
-        }
+        // float2 ClampVelocity(float2 velocity, float maxVelocity)
+        // {
+        //     float len = length(velocity);
+        //     return (len > 0.0) ? min(len, maxVelocity) * (velocity * rcp(len)) : 0.0;
+        // }
 
-        float2 GetVelocity(float2 uv)
-        {
-            // Unity motion vectors are forward motion vectors in screen UV space
-            float2 offsetUv = SAMPLE_TEXTURE2D_X(_MotionVectorTexture, sampler_LinearClamp, uv).xy;
-            return -offsetUv;
-        }
+        // float2 GetVelocity(float2 uv)
+        // {
+        //     // Unity motion vectors are forward motion vectors in screen UV space
+        //     float2 offsetUv = SAMPLE_TEXTURE2D_X(_MotionVectorTexture, sampler_LinearClamp, uv).xy;
+        //     return -offsetUv;
+        // }
 
-        // Per-pixel camera velocity
-        float2 GetCameraVelocity(float4 uv)
-        {
-            #if UNITY_REVERSED_Z
-                float depth = SampleSceneDepth(uv.xy).x;
-            #else
-                float depth = lerp(UNITY_NEAR_CLIP_VALUE, 1, SampleSceneDepth(uv.xy).x);
-            #endif
+        // // Per-pixel camera velocity
+        // float2 GetCameraVelocity(float4 uv)
+        // {
+        //     #if UNITY_REVERSED_Z
+        //         float depth = SampleSceneDepth(uv.xy).x;
+        //     #else
+        //         float depth = lerp(UNITY_NEAR_CLIP_VALUE, 1, SampleSceneDepth(uv.xy).x);
+        //     #endif
 
-            float4 worldPos = float4(ComputeWorldSpacePosition(uv.xy, depth, UNITY_MATRIX_I_VP), 1.0);
+        //     float4 worldPos = float4(ComputeWorldSpacePosition(uv.xy, depth, UNITY_MATRIX_I_VP), 1.0);
 
-            float4 prevClipPos = mul(_PrevViewProjM, worldPos);
-            float4 curClipPos = mul(_ViewProjM, worldPos);
+        //     float4 prevClipPos = mul(_PrevViewProjM, worldPos);
+        //     float4 curClipPos = mul(_ViewProjM, worldPos);
 
-            float2 prevPosCS = prevClipPos.xy / prevClipPos.w;
-            float2 curPosCS = curClipPos.xy / curClipPos.w;
+        //     float2 prevPosCS = prevClipPos.xy / prevClipPos.w;
+        //     float2 curPosCS = curClipPos.xy / curClipPos.w;
 
-            // Backwards motion vectors
-            float2 velocity = (prevPosCS - curPosCS);
-            #if UNITY_UV_STARTS_AT_TOP
-                velocity.y = -velocity.y;
-            #endif
-            return ClampVelocity(velocity, _Clamp);
-        }
+        //     // Backwards motion vectors
+        //     float2 velocity = (prevPosCS - curPosCS);
+        //     #if UNITY_UV_STARTS_AT_TOP
+        //         velocity.y = -velocity.y;
+        //     #endif
+        //     return ClampVelocity(velocity, _Clamp);
+        // }
 
-        float4 GatherSample(float sampleNumber, float2 velocity, float invSampleCount, float2 centerUV, float randomVal, float velocitySign)
-        {
-            float  offsetLength = (sampleNumber + 0.5h) + (velocitySign * (randomVal - 0.5h));
-            float2 sampleUV = centerUV + (offsetLength * invSampleCount) * velocity * velocitySign;
-
-
-            #if UNITY_REVERSED_Z
-                float Depth = SampleSceneDepth(centerUV.xy).x;
-                float VelocityDepth = SampleSceneDepth(sampleUV.xy).x;
-
-            #else
-                float Depth = lerp(UNITY_NEAR_CLIP_VALUE, 1, SampleSceneDepth(centerUV.xy).x);
-                float VelocityDepth = lerp(UNITY_NEAR_CLIP_VALUE, 1, SampleSceneDepth(sampleUV.xy).x);
-
-            #endif
-
-            float diff = VelocityDepth < Depth ? 1:0;
-
-            return SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_PointClamp, sampleUV); //* diff;
-        }
-
-        float4 DoMotionBlur(VaryingsCMB input, int iterations, int useMotionVectors)
-        {
-            UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
-
-            float2 uv = UnityStereoTransformScreenSpaceTex(input.texcoord.xy);
-
-            float2 velocity;
-            if(useMotionVectors == 1)
-            {
-                velocity = ClampVelocity(GetVelocity(uv),_Clamp) * _Intensity;
-                // Scale back to -1, 1 from 0..1 to match GetCameraVelocity. A workaround to keep existing visual look.
-                // TODO: There's bug in GetCameraVelocity, which is using NDC and not UV
-                velocity *= 2;
-            }
-            else
-                velocity = GetCameraVelocity(float4(uv, input.texcoord.zw)) * _Intensity;
-
-            float randomVal = InterleavedGradientNoise(uv * _SourceSize.xy, 0);
-            float invSampleCount = rcp(iterations * 2.0);
-
-            //float4 color = SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_PointClamp, uv);
-            float4 color = 0;
+        // float4 GatherSample(float sampleNumber, float2 velocity, float invSampleCount, float2 centerUV, float randomVal, float velocitySign)
+        // {
+        //     float  offsetLength = (sampleNumber + 0.5h) + (velocitySign * (randomVal - 0.5h));
+        //     float2 sampleUV = centerUV + (offsetLength * invSampleCount) * velocity * velocitySign;
 
 
-            UNITY_UNROLL
-            for (int i = 0; i < iterations; i++)
-            {
-                color += GatherSample(i, velocity, invSampleCount, uv, randomVal, -1.0);
-                color += GatherSample(i, velocity, invSampleCount, uv, randomVal,  1.0);
-            }
+        //     #if UNITY_REVERSED_Z
+        //         float Depth = SampleSceneDepth(centerUV.xy).x;
+        //         float VelocityDepth = SampleSceneDepth(sampleUV.xy).x;
 
-            #if _ENABLE_ALPHA_OUTPUT
-                return color * invSampleCount;
-            #else
-                  // NOTE: Rely on the compiler to eliminate .w computation above
-                return float4(color.xyz * invSampleCount, 1.0);
-            #endif
-        }
+        //     #else
+        //         float Depth = lerp(UNITY_NEAR_CLIP_VALUE, 1, SampleSceneDepth(centerUV.xy).x);
+        //         float VelocityDepth = lerp(UNITY_NEAR_CLIP_VALUE, 1, SampleSceneDepth(sampleUV.xy).x);
+
+        //     #endif
+
+        //     float diff = VelocityDepth < Depth ? 1:0;
+
+        //     return SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_PointClamp, sampleUV); //* diff;
+        // }
+
+        // float4 DoMotionBlur(VaryingsCMB input, int iterations, int useMotionVectors)
+        // {
+        //     UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
+
+        //     float2 uv = UnityStereoTransformScreenSpaceTex(input.texcoord.xy);
+
+        //     float2 velocity;
+        //     if(useMotionVectors == 1)
+        //     {
+        //         velocity = ClampVelocity(GetVelocity(uv),_Clamp) * _Intensity;
+        //         // Scale back to -1, 1 from 0..1 to match GetCameraVelocity. A workaround to keep existing visual look.
+        //         // TODO: There's bug in GetCameraVelocity, which is using NDC and not UV
+        //         velocity *= 2;
+        //     }
+        //     else
+        //         velocity = GetCameraVelocity(float4(uv, input.texcoord.zw)) * _Intensity;
+
+        //     float randomVal = InterleavedGradientNoise(uv * _SourceSize.xy, 0);
+        //     float invSampleCount = rcp(iterations * 2.0);
+
+        //     //float4 color = SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_PointClamp, uv);
+        //     float4 color = 0;
+
+
+        //     UNITY_UNROLL
+        //     for (int i = 0; i < iterations; i++)
+        //     {
+        //         color += GatherSample(i, velocity, invSampleCount, uv, randomVal, -1.0);
+        //         color += GatherSample(i, velocity, invSampleCount, uv, randomVal,  1.0);
+        //     }
+
+        //     #if _ENABLE_ALPHA_OUTPUT
+        //         return color * invSampleCount;
+        //     #else
+        //           // NOTE: Rely on the compiler to eliminate .w computation above
+        //         return float4(color.xyz * invSampleCount, 1.0);
+        //     #endif
+        // }
 
         float4 FragVelocitySetup(VaryingsCMB input)
         {
@@ -282,10 +275,10 @@ Shader "Hidden/Universal Render Pipeline/CameraMotionBlur"
         float4 FragTileMaxV(VaryingsCMB input)
         {
             float2 uv0 = input.texcoord + _Tile8RT_TexelSize.xy * _TileMaxOffs.xy;
-            float2 du = float2(_Tile8RT_TexelSize.x, 0.0);
-            float2 dv = float2(0.0, _Tile8RT_TexelSize.y);
+            float2 du = float2(_Tile8RT_TexelSize.x, 0.0f);
+            float2 dv = float2(0.0f, _Tile8RT_TexelSize.y);
 
-            float2 vo = 0.0;
+            float2 vo = 0.0f;
 
             UNITY_LOOP
             for (int ix = 0; ix < _TileMaxLoop; ix++)
@@ -364,92 +357,92 @@ Shader "Hidden/Universal Render Pipeline/CameraMotionBlur"
 
         }
 
-        float4 FragReconstruction(VaryingsCMB input) : SV_Target
-        {
-            // Color sample at the center point
-            const float4 c_p = SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp, input.texcoord);
+       half4 FragReconstruction(VaryingsCMB input) : SV_Target
+{
+    // Color sample at the center point
+    const half4 c_p = SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp, input.texcoord);
 
-            // Velocity/Depth sample at the center point
-            const float3 vd_p = SampleVelocity(input.texcoord);
-            const float l_v_p = max(length(vd_p.xy), 0.5);
-            const float rcp_d_p = 1.0 / vd_p.z;
+    // Velocity/Depth sample at the center point
+    const half3 vd_p = SampleVelocity(input.texcoord);
+    const half l_v_p = max(length(vd_p.xy), 0.5h);
+    const half rcp_d_p = vd_p.z != 0.0h ? 1.0h / vd_p.z : 0.0h;
 
-            // NeighborMax vector sample at the center point
-            const float2 v_max = SAMPLE_TEXTURE2D(_NeighborMaxTex, sampler_PointClamp, input.texcoord + JitterTile(input.texcoord)).xy;
-            const float l_v_max = length(v_max);
-            const float rcp_l_v_max = 1.0 / l_v_max;
+    // NeighborMax vector sample at the center point
+    const half2 v_max = SAMPLE_TEXTURE2D(_NeighborMaxTex, sampler_PointClamp, input.texcoord + JitterTile(input.texcoord)).xy;
+    const half l_v_max = length(v_max);
+    const half rcp_l_v_max = l_v_max != 0.0h ? 1.0h / l_v_max : 0.0h;
 
-            // Escape early if the NeighborMax vector is small enough.
-            if (l_v_max < 2.0) return c_p;
+    // Escape early if the NeighborMax vector is small enough.
+    if (l_v_max < 2.0h) return c_p;
 
-            // Use V_p as a secondary sampling direction except when it's too small
-            // compared to V_max. This vector is rescaled to be the length of V_max.
-            const float2 v_alt = (l_v_p * 2.0 > l_v_max) ? vd_p.xy * (l_v_max / l_v_p) : v_max;
+    // Use V_p as a secondary sampling direction except when it's too small
+    // compared to V_max. This vector is rescaled to be the length of V_max.
+    const half2 v_alt = (l_v_p * 2.0h > l_v_max) ? vd_p.xy * (l_v_max / l_v_p) : v_max;
 
-            // Determine the sample count.
-            const float sc = floor(min(_LoopCount, l_v_max * 0.5));
+    // Determine the sample count.
+    const half sc = max(1.0h, floor(min(_LoopCount, l_v_max * 0.5h)));
 
-            // Loop variables (starts from the outermost sample)
-            const float dt = 1.0 / sc;
-            const float t_offs = (GradientNoise(input.texcoord) - 0.5) * dt; //(InterleavedGradientNoise(input.texcoord * _SourceSize.xy,0) - 0.5) * dt;
-            float t = 1.0 - dt * 0.5;
-            float count = 0.0;
+    // Loop variables (starts from the outermost sample)
+    const half dt = 1.0h / sc;
+    const half t_offs = (GradientNoise(input.texcoord) - 0.5h) * dt;
+    half t = 1.0h - dt * 0.5h;
+    half count = 0.0h;
 
-            // Background velocity
-            // This is used for tracking the maximum velocity in the background layer.
-            float l_v_bg = max(l_v_p, 1.0);
+    // Background velocity
+    half l_v_bg = max(l_v_p, 1.0h);
 
-            // Color accumlation
-            float4 acc = 0.0;
+    // Color accumulation
+    half4 acc = 0.0h;
 
-            UNITY_LOOP
-            while (t > dt * 0.25)
-            {
-                // Sampling direction (switched per every two samples)
-                const float2 v_s = Interval(count, 4.0) ? v_alt : v_max;
+    UNITY_LOOP
+    while (t > dt * 0.25h)
+    {
+        // Sampling direction (switched per every two samples)
+        const half2 v_s = Interval(count, 4.0h) ? v_alt : v_max;
 
-                // Sample position (inverted per every sample)
-                const float t_s = (Interval(count, 2.0) ? -t : t) + t_offs;
+        // Sample position (inverted per every sample)
+        const half t_s = (Interval(count, 2.0h) ? -t : t) + t_offs;
 
-                // Distance to the sample position
-                const float l_t = l_v_max * abs(t_s);
+        // Distance to the sample position
+        const half l_t = l_v_max * abs(t_s);
 
-                // UVs for the sample position
-                const float2 uv0 = input.texcoord + v_s * t_s * _MotionVectorTexture_TexelSize.xy;
-                const float2 uv1 = input.texcoord + v_s * t_s * _MotionVectorTexture_TexelSize.xy;
+        // UVs for the sample position
+        const half2 uv0 = input.texcoord + v_s * t_s * _MotionVectorTexture_TexelSize.xy;
+        const half2 uv1 = uv0;
 
-                // Color sample
-                const float3 c = SAMPLE_TEXTURE2D(_BlitTexture, sampler_MirrorLinear, uv0).rgb;
+        // Color sample
+        const half3 c = SAMPLE_TEXTURE2D(_BlitTexture, sampler_MirrorLinear, uv0).rgb;
 
-                // Velocity/Depth sample
-                const float3 vd = SampleVelocity(uv1);
+        // Velocity/Depth sample
+        const half3 vd = SampleVelocity(uv1);
 
-                // Background/Foreground separation
-                const float fg = saturate((vd_p.z - vd.z) * _Separation * rcp_d_p);
+        // Background/Foreground separation
+        const half fg = saturate((vd_p.z - vd.z) * _Separation * rcp_d_p);
 
-                // Length of the velocity vector
-                const float l_v = lerp(l_v_bg, length(vd.xy), fg);
+        // Length of the velocity vector
+        const half l_v = max(l_v_bg, 0.0001h); // prevent divide by zero
+        const half l_v_curr = lerp(l_v_bg, length(vd.xy), fg);
 
-                // Sample weight
-                // (Distance test) * (Spreading out by motion) * (Triangular window)
-                const float w = saturate(l_v - l_t) / l_v * (1.2 - t);
+        // Sample weight
+        const half w = l_v_curr != 0.0h ? saturate(l_v_curr - l_t) / l_v_curr * (1.2h - t) : 0.0h;
 
-                // Color accumulation
-                acc += float4(c, 1.0) * w;
+        // Color accumulation
+        acc += half4(c, 1.0h) * w;
 
-                // Update the background velocity.
-                l_v_bg = max(l_v_bg, l_v);
+        // Update the background velocity.
+        l_v_bg = max(l_v_bg, l_v_curr);
 
-                // Advance to the next sample.
-                t = Interval(count, 2.0) ? t - dt : t;
-                count += 1.0;
-            }
+        // Advance to the next sample.
+        t = Interval(count, 2.0h) ? t - dt : t;
+        count += 1.0h;
+    }
 
-            // Add the center sample.
-            acc += float4(c_p.rgb, 1.0) * (1.2 / (l_v_bg * sc * 2.0));
+    // Add the center sample.
+    acc += half4(c_p.rgb, 1.0h) * (1.2h / max((l_v_bg * sc * 2.0h), 0.0001h));
 
-            return float4(acc.rgb / (acc.a), c_p.a);
-        }
+    return half4(acc.rgb / max(acc.a, 0.0001h), c_p.a);
+}
+
 
     ENDHLSL
 
