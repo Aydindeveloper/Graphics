@@ -50,7 +50,7 @@ TEXTURE2D_X(_TileMaxNeighbourhood);
 #define TILE_JITTER 1
 // When this is set to 1, samples are taken from both the central direction and the maximum direction in the tile. This reduces bugs when very different velocities are available in a tile.
 // This however also can cause the blur to look slightly different.
-#define GUERTIN2014_DOUBLE_DIR 1
+#define GUERTIN2014_DOUBLE_DIR 0
 #define DOT_WEIGHTING 1
 #define DOT_MULTIPLIER 1 * DOT_WEIGHTING
 
@@ -141,7 +141,7 @@ CTYPE ProcessSampleFastPath(uint sampleNumber, float2 dir, float invSampleCount,
     float  offsetLength = (sampleNumber + 0.5) + (dirSign * (randomVal - 0.5));
     float2 sampleUV = ClampAndScaleUVForBilinearPostProcessTexture(centralUV + (offsetLength*invSampleCount) * currDir);
 
-    CTYPE sampleColor    = SAMPLE_TEXTURE2D_X_LOD(_InputTexture, s_point_clamp_sampler, sampleUV, 0).CTYPE_SWIZZLE;
+    CTYPE sampleColor = SAMPLE_TEXTURE2D_X_LOD(_InputTexture, s_point_mirror_sampler, sampleUV, 0).CTYPE_SWIZZLE;
 
     return sampleColor;
 }
@@ -153,8 +153,8 @@ float4 ProcessSample(uint sampleNumber, float2 dir, float invSampleCount, float2
     float  offsetLength = (sampleNumber + 0.5) + (dirSign * (randomVal - 0.5));
     float2 sampleUV = ClampAndScaleUVForBilinearPostProcessTexture(centralUV + (offsetLength*invSampleCount) * currDir);
 
-    float3 sampleMotionVecDepth = SAMPLE_TEXTURE2D_X_LOD(_MotionVecAndDepth, s_point_clamp_sampler, sampleUV, 0).xyz;
-    CTYPE sampleColor    = SAMPLE_TEXTURE2D_X_LOD(_InputTexture, s_point_clamp_sampler, sampleUV, 0).CTYPE_SWIZZLE;
+    float3 sampleMotionVecDepth = SAMPLE_TEXTURE2D_X_LOD(_MotionVecAndDepth, s_point_mirror_sampler, sampleUV, 0).xyz;
+    CTYPE sampleColor = SAMPLE_TEXTURE2D_X_LOD(_InputTexture, s_point_mirror_sampler, sampleUV, 0).CTYPE_SWIZZLE;
 
     outMotionVecLength = MotionVecLengthInPixelsFromEncoded(sampleMotionVecDepth.xy);
     outDepth = sampleMotionVecDepth.z;
