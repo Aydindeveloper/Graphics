@@ -4264,8 +4264,8 @@ namespace UnityEngine.Rendering.HighDefinition
 
             data.motionBlurParams1 = new Vector4(
                 m_MotionBlur.intensity.value,
-                m_MotionBlur.maximumVelocity.value / screenMagnitude,
-                1.0f, // min/max velocity ratio for high quality.
+                m_MotionBlur.maximumVelocity.value / 2160,
+                m_MotionBlur.MinMaxQuality.value,//0.0f, // min/max velocity ratio for high quality.
                 m_MotionBlur.cameraRotationVelocityClamp.value
             );
 
@@ -4342,13 +4342,13 @@ namespace UnityEngine.Rendering.HighDefinition
             Vector2 tileTexScale = new Vector2((float)data.tileTargetSize.x / (float)postProcessViewportSize.x, (float)data.tileTargetSize.y / (float)postProcessViewportSize.y);
 
             data.preppedMotionVec = builder.CreateTransientTexture(new TextureDesc(Vector2.one, IsDynamicResUpscaleTargetEnabled(), true)
-            { format = GraphicsFormat.B10G11R11_UFloatPack32, enableRandomWrite = true, name = "Prepped Motion Vectors" });
+            { format = GraphicsFormat.R16G16B16A16_SFloat, enableRandomWrite = true, name = "Prepped Motion Vectors" });
 
             data.minMaxTileVel = builder.CreateTransientTexture(new TextureDesc(tileTexScale, IsDynamicResUpscaleTargetEnabled(), true)
-            { format = GraphicsFormat.B10G11R11_UFloatPack32, enableRandomWrite = true, name = "MinMax Tile Motion Vectors" });
+            { format = GraphicsFormat.R16G16B16A16_SFloat, enableRandomWrite = true, name = "MinMax Tile Motion Vectors" });
 
             data.maxTileNeigbourhood = builder.CreateTransientTexture(new TextureDesc(tileTexScale, IsDynamicResUpscaleTargetEnabled(), true)
-            { format = GraphicsFormat.B10G11R11_UFloatPack32, enableRandomWrite = true, name = "Max Neighborhood Tile" });
+            { format = GraphicsFormat.R16G16B16A16_SFloat, enableRandomWrite = true, name = "Max Neighborhood Tile" });
 
             data.tileToScatterMax = TextureHandle.nullHandle;
             data.tileToScatterMin = TextureHandle.nullHandle;
