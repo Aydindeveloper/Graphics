@@ -75,6 +75,12 @@ namespace UnityEngine.Rendering.HighDefinition
         public ClampedFloatParameter minimumVelocity = new ClampedFloatParameter(2.0f, 0.0f, 64.0f);
 
         /// <summary>
+        /// Controls the minimum velocity, in pixels, that a GameObject must have to contribute to the motion blur effect.
+        /// </summary>
+        [Tooltip("Controls the minimum maximum velocity ratio for high quality.")]
+        public ClampedFloatParameter MinMaxQuality = new ClampedFloatParameter(0.25f, -5.0f, 5.0f);
+
+        /// <summary>
         /// If toggled on camera rotation can be clamped differently.
         /// </summary>
 
@@ -118,7 +124,7 @@ namespace UnityEngine.Rendering.HighDefinition
         /// </summary>
         [AdditionalProperty]
         [Tooltip("Value used for the depth based weighting of samples. Tweak if unwanted leak of background onto foreground or viceversa is detected.")]
-        public ClampedFloatParameter depthComparisonExtent = new ClampedFloatParameter(1.0f, 0.0f, 20.0f);
+        public ClampedFloatParameter depthComparisonExtent = new ClampedFloatParameter(1.0f, 0.0f, 100.0f);
 
         /// <summary>
         /// Sets the maximum number of sample points that HDRP uses to compute motion blur.
