@@ -11,6 +11,8 @@ namespace UnityEditor.Rendering.HighDefinition
 
         SerializedDataParameter m_MaxVelocityInPixels;
         SerializedDataParameter m_MinVelInPixels;
+        SerializedDataParameter m_MinMaxQuality;
+
 
         //  Advanced properties
         SerializedDataParameter m_CameraMVClampMode;
@@ -28,6 +30,7 @@ namespace UnityEditor.Rendering.HighDefinition
             m_Intensity = Unpack(o.Find(x => x.intensity));
             m_SampleCount = Unpack(o.Find("m_SampleCount"));
             m_MinVelInPixels = Unpack(o.Find(x => x.minimumVelocity));
+            m_MinMaxQuality = Unpack(o.Find(x => x.MinMaxQuality));
             m_MaxVelocityInPixels = Unpack(o.Find(x => x.maximumVelocity));
             m_CameraMVClampMode = Unpack(o.Find(x => x.specialCameraClampMode));
             m_CameraFullClamp = Unpack(o.Find(x => x.cameraVelocityClamp));
@@ -55,6 +58,7 @@ namespace UnityEditor.Rendering.HighDefinition
 
             PropertyField(m_MaxVelocityInPixels);
             PropertyField(m_MinVelInPixels);
+            PropertyField(m_MinMaxQuality);
             PropertyField(m_DepthCmpScale);
 
             PropertyField(m_CameraMotionBlur);
