@@ -1599,7 +1599,7 @@ namespace UnityEngine.Rendering.Universal
 
             //var VelocitySetupDesc = GetCompatibleDescriptor(srcDesc, tw, th, GraphicsFormat.A2B10G10R10_UNormPack32);
             //var VelocitySetupDesc = GetCompatibleDescriptor(srcDesc, tw, th, GraphicsFormat.R16G16B16A16_UNorm);
-            var VelocitySetupDesc = GetCompatibleDescriptor(srcDesc, tw, th, GraphicsFormat.R16G16B16A16_UNorm);
+            var VelocitySetupDesc = GetCompatibleDescriptor(srcDesc, tw, th, GraphicsFormat.R16G16B16A16_SFloat);
 
 
             var VelocitySetup = CreateCompatibleTexture(renderGraph, VelocitySetupDesc, "_VelocityTest", true, FilterMode.Point);
@@ -1655,7 +1655,7 @@ namespace UnityEngine.Rendering.Universal
 
                 //Debug.Assert(cameraDepthTexture.IsValid(), "Camera depth texture is invalid. Per-camera motion blur requires a depth texture.");
                 builder.UseTexture(motionVectorDepth, AccessFlags.Read);
-                builder.UseTexture(VelocitySetup, AccessFlags.Write);
+                //builder.UseTexture(VelocitySetup, AccessFlags.Write);
                 //builder.UseTexture(Tile2RT, AccessFlags.ReadWrite);
 
 
@@ -1728,7 +1728,7 @@ namespace UnityEngine.Rendering.Universal
                 //Debug.Assert(cameraDepthTexture.IsValid(), "Camera depth texture is invalid. Per-camera motion blur requires a depth texture.");
                 builder.UseTexture(motionVectorDepth, AccessFlags.Read);
                 builder.UseTexture(VelocitySetup, AccessFlags.Read);
-                builder.UseTexture(Tile2RT, AccessFlags.Write);
+                //builder.UseTexture(Tile2RT, AccessFlags.Write);
 
                 passData.material = material;
                 passData.passIndex = passIndex;
@@ -1804,7 +1804,7 @@ namespace UnityEngine.Rendering.Universal
                 //builder.UseTexture(cameraDepthTexture, AccessFlags.Read);
                 //builder.UseTexture(VelocitySetup, AccessFlags.Read);
                 builder.UseTexture(Tile2RT, AccessFlags.Read);
-                builder.UseTexture(Tile4RT, AccessFlags.Write);
+                //builder.UseTexture(Tile4RT, AccessFlags.Write);
 
 
                 passData.material = material;
@@ -1885,7 +1885,7 @@ namespace UnityEngine.Rendering.Universal
                 //builder.UseTexture(VelocitySetup, AccessFlags.Read);
                 //builder.UseTexture(Tile2RT, AccessFlags.Read);
                 builder.UseTexture(Tile4RT, AccessFlags.Read);
-                builder.UseTexture(Tile8RT, AccessFlags.Write);
+                //builder.UseTexture(Tile8RT, AccessFlags.Write);
 
 
 
@@ -1968,7 +1968,7 @@ namespace UnityEngine.Rendering.Universal
                 //builder.UseTexture(Tile2RT, AccessFlags.Read);
                 //builder.UseTexture(Tile4RT, AccessFlags.Read);
                 builder.UseTexture(Tile8RT, AccessFlags.Read);
-                builder.UseTexture(TileVRT, AccessFlags.Write);
+                //builder.UseTexture(TileVRT, AccessFlags.Write);
 
 
 
@@ -2056,7 +2056,7 @@ namespace UnityEngine.Rendering.Universal
                 //builder.UseTexture(Tile4RT, AccessFlags.Read);
                 //builder.UseTexture(Tile8RT, AccessFlags.Read);
                 builder.UseTexture(TileVRT, AccessFlags.Read);
-                builder.UseTexture(NeighborMaxTex, AccessFlags.Write);
+                //builder.UseTexture(NeighborMaxTex, AccessFlags.Write);
 
 
                 passData.material = material;
@@ -2158,7 +2158,7 @@ namespace UnityEngine.Rendering.Universal
                     data.material.SetFloat("_RcpMaxBlurRadius", 1.0f / data.MaxBlurRadius);
                     data.material.SetVector("_TileMaxOffs", data.tileMaxOffs);
                     data.material.SetInt("_TileMaxLoop", (int)(data.tileSize / 8f));
-                    data.material.SetFloat("_LoopCount", 8);
+                    data.material.SetFloat("_LoopCount", 64);
                     data.material.SetFloat("_Separation", data.separation);
 
 
